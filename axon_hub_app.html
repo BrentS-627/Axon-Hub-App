@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Axon App Hub</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;min-height:100vh;padding:20px}
+
+.hub{background:#111;border-radius:12px;overflow:hidden;min-height:500px;max-width:1400px;margin:0 auto;position:relative}
+.hub-header{background:#FFE000;padding:2rem 2rem 1.75rem}
+.hub-header h1{font-size:42px;font-weight:700;color:#111;letter-spacing:0.05em}
+.hub-header p{font-size:13px;color:#555;margin-top:6px}
+
+.hub-body{padding:2rem}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:720px;margin:0 auto}
+
+.app-card{background:#2e2e2e;border:1px solid #555;border-radius:12px;padding:1.5rem;cursor:pointer;transition:border-color 0.15s}
+.app-card:hover{border-color:#FFE000}
+
+.card-title{font-size:13px;font-weight:700;color:#FFE000;letter-spacing:0.06em;margin-bottom:6px}
+.card-desc{font-size:13px;color:#fff;line-height:1.5;margin-bottom:1.25rem}
+.card-btn{width:100%;background:#FFE000;color:#111;border:none;border-radius:8px;padding:9px 0;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.03em}
+.card-btn:hover{background:#ffd000}
+
+.app-view{display:none}
+.app-view.active{display:block}
+
+.back-bar{background:#2e2e2e;padding:10px 1.5rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid #555}
+.back-btn{background:none;border:none;color:#FFE000;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;padding:4px 0}
+.back-btn:hover{opacity:0.8}
+.back-btn svg{width:16px;height:16px;stroke:#FFE000;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.back-label{font-size:12px;color:#fff}
+
+.inner-app{background:#111;min-height:400px}
+.top-bar{background:#FFE000;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top-bar h2{font-size:22px;font-weight:700;color:#111;letter-spacing:0.05em}
+.top-bar-btns{display:flex;gap:8px}
+.btn-new{background:#111;color:#FFE000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-new:hover{background:#333}
+.btn-copy{background:transparent;color:#111;border:1.5px solid #111;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-copy:hover{background:rgba(0,0,0,0.08)}
+.btn-copy.copied{background:#111;color:#FFE000;border-color:#111}
+
+.inner{padding:1.25rem 1.5rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
+.stat{background:#2e2e2e;border:1px solid #555;border-radius:8px;padding:12px 14px}
+.stat-label{font-size:12px;color:#fff;margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:500;color:#FFE000}
+.filters{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.filters input[type=text]{font-size:13px;height:32px;padding:0 10px;border-radius:8px;flex:1;min-width:120px;background:#2e2e2e;border:1px solid #666;color:#fff}
+.filters input[type=text]::placeholder{color:#fff;opacity:0.7}
+.filters input[type=text]:focus{outline:none;border-color:#FFE000}
+.filters select{font-size:13px;height:32px;padding:0 8px;border-radius:8px;background:#2e2e2e;border:1px solid #666;color:#fff;cursor:pointer}
+.filters select:focus{outline:none;border-color:#FFE000}
+
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th{text-align:left;font-weight:500;font-size:11px;color:#fff;padding:8px 10px;border-bottom:1px solid #555;background:#2a2a2a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.04em;text-transform:uppercase}
+td{padding:9px 10px;border-bottom:1px solid #3a3a3a;color:#fff;vertical-align:top;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.data-row:hover td{background:#333}
+
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-canceled{background:#3a1a1a;color:#f09595}
+.badge-completed{background:#1a3a1a;color:#6fcf6f}
+.badge-closed{background:#2a3a3a;color:#fff}
+.badge-follow-up{background:#3a2a1a;color:#f0c595}
+.badge-in-progress{background:#FFE000;color:#633806}
+.badge-processing{background:#1a2a3a;color:#95c5f0}
+.badge-shipped-pd{background:#2a1a3a;color:#c595f0}
+.badge-shipped-axon{background:#1a3a2a;color:#95f0c5}
+
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:#fff;font-size:14px}
+.icon-btn:hover{background:#3a3a3a;color:#FFE000}
+.table-wrap{border:1px solid #555;border-radius:12px;overflow:auto}
+.empty-row{text-align:center;padding:3rem;color:#fff;font-size:14px}
+.ticket-link{color:#FFE000;text-decoration:none;font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis}
+.ticket-link:hover{text-decoration:underline}
+td.notes-cell{white-space:normal;word-break:break-word}
+
+.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;z-index:100;overflow-y:auto}
+.modal{background:#2e2e2e;border:1px solid #666;border-radius:12px;padding:1.5rem;width:100%;max-width:720px}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:1.25rem;color:#FFE000}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-third{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.form-full{grid-column:1/-1}
+.form-field label{display:block;font-size:12px;color:#fff;margin-bottom:4px}
+.form-field input,.form-field select,.form-field textarea{width:100%;font-size:13px;background:#222;border:1px solid #666;color:#fff;border-radius:8px;padding:0 10px;height:36px;font-family:inherit}
+.form-field input::placeholder,.form-field textarea::placeholder{color:#fff;opacity:0.6}
+.form-field textarea{height:72px;resize:vertical;padding:8px 10px}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:#FFE000}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:1rem}
+.btn-cancel{background:none;border:1px solid #666;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;color:#fff}
+.btn-cancel:hover{border-color:#fff}
+.btn-save{background:#FFE000;color:#111;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-save:hover{background:#ffd000}
+
+/* Theme toggle */
+.theme-toggle{position:absolute;top:1.1rem;right:1.1rem;z-index:50;cursor:pointer;width:42px;height:24px;display:block}
+.theme-toggle input{display:none}
+.toggle-slider{position:absolute;inset:0;background:rgba(0,0,0,0.2);border-radius:12px;transition:background 0.2s}
+.toggle-slider::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;background:#111;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.theme-toggle input:checked + .toggle-slider{background:rgba(0,0,0,0.3)}
+.theme-toggle input:checked + .toggle-slider::after{transform:translateX(18px)}
+
+/* Light mode */
+body.light{background:#e8e8e8}
+body.light .hub{background:#f4f4f4}
+body.light .hub-header p{color:#111}
+body.light .app-card{background:#fff;border-color:#ddd}
+body.light .card-desc{color:#111}
+body.light .back-bar{background:#fff;border-bottom-color:#ddd}
+body.light .back-btn{color:#111}
+body.light .back-btn svg{stroke:#111}
+body.light .back-label{color:#111}
+body.light .inner-app{background:#f4f4f4}
+body.light .stat{background:#fff;border-color:#ddd}
+body.light .stat-label{color:#111}
+body.light .filters input[type=text]{background:#fff;border-color:#ccc;color:#111}
+body.light .filters input[type=text]::placeholder{color:#888;opacity:1}
+body.light .filters select{background:#fff;border-color:#ccc;color:#111}
+body.light th{color:#111;background:#f0f0f0;border-bottom-color:#ddd}
+body.light td{color:#111;border-bottom-color:#eee}
+body.light tr.data-row:hover td{background:#f9f9f9}
+body.light .icon-btn{color:#111}
+body.light .icon-btn:hover{background:#e8e8e8;color:#000}
+body.light .table-wrap{border-color:#ddd}
+body.light .empty-row{color:#111}
+body.light .ticket-link{color:#0066cc}
+body.light .modal{background:#fff;border-color:#ddd}
+body.light .modal h3{color:#111}
+body.light .form-field label{color:#111}
+body.light .form-field input,body.light .form-field select,body.light .form-field textarea{background:#fff;border-color:#ddd;color:#111}
+body.light .form-field input::placeholder,body.light .form-field textarea::placeholder{color:#888;opacity:1}
+body.light .btn-cancel{color:#111;border-color:#bbb}
+body.light .btn-cancel:hover{border-color:#111}
+body.light .badge-canceled{background:#fde8e8;color:#c53030}
+body.light .badge-completed{background:#e8f5e8;color:#276627}
+body.light .badge-closed{background:#e8e8e8;color:#111}
+body.light .badge-follow-up{background:#fef3e2;color:#7d4e00}
+body.light .badge-processing{background:#e8f0fb;color:#1a4a8a}
+body.light .badge-shipped-pd{background:#f0e8fb;color:#5a1a8a}
+body.light .badge-shipped-axon{background:#e8fbf0;color:#1a6a3a}
+body.light .card-title{color:#111}
+body.light .stat-val{color:#111}
+
+/* Calendar picker */
+input[type=date]::-webkit-calendar-picker-indicator{display:none}
+.date-field-wrap{position:relative}
+.cal-popup{display:none;position:absolute;left:calc(100% + 10px);top:0;z-index:300;background:#222;border:1px solid #555;border-radius:10px;padding:10px;width:224px;box-shadow:0 4px 24px rgba(0,0,0,0.6)}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cal-nav{background:none;border:none;color:#FFE000;cursor:pointer;font-size:20px;padding:0 6px;line-height:1}
+.cal-nav:hover{opacity:0.7}
+.cal-month{font-size:13px;font-weight:600;color:#fff}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dname{font-size:10px;color:#888;text-align:center;padding-bottom:4px}
+.cal-d{font-size:12px;text-align:center;padding:5px 0;border-radius:4px;cursor:pointer;color:#ccc}
+.cal-d:not(.empty):hover{background:#333;color:#fff}
+.cal-d.sel{background:#FFE000;color:#111;font-weight:700}
+.cal-d.today{outline:1px solid #666}
+.cal-d.empty{cursor:default}
+body.light .cal-popup{background:#fff;border-color:#ddd;box-shadow:0 4px 24px rgba(0,0,0,0.12)}
+body.light .cal-month{color:#111}
+body.light .cal-nav{color:#333}
+body.light .cal-dname{color:#888}
+body.light .cal-d{color:#333}
+body.light .cal-d:not(.empty):hover{background:#f0f0f0;color:#111}
+body.light .cal-d.today{outline-color:#ccc}
+</style>
+</head>
+<body>
+
+<div class="hub" id="root">
+  <label class="theme-toggle" title="Toggle light/dark mode">
+    <input type="checkbox" id="themeCheck" onchange="toggleTheme()">
+    <span class="toggle-slider"></span>
+  </label>
+  <div id="landing">
+    <div class="hub-header">
+      <h1>AXON APP HUB</h1>
+      <p>Select an application to get started</p>
+    </div>
+    
+    <div class="hub-body">
+      <div class="cards">
+        <div class="app-card" onclick="openApp('support-tracker')">
+          <div class="card-title">SUPPORT TICKETS</div>
+          <div class="card-desc">Track and manage customer support tickets in SalesForce, JIRA and Service Hub.</div>
+          <button class="card-btn">Open App</button>
+        </div>
+        
+        <div class="app-card" onclick="openApp('rma-tracking')">
+          <div class="card-title">RMA TRACKING</div>
+          <div class="card-desc">Monitor Return Merchandise Authorization requests and track their status through the process.</div>
+          <button class="card-btn">Open App</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support Tracker App -->
+  <div id="support-tracker" class="app-view">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back to Hub
+      </button>
+      <span class="back-label">Support Ticket Tracker</span>
+    </div>
+    
+    <div class="inner-app">
+      <div class="top-bar">
+        <h2>SUPPORT TICKET TRACKER</h2>
+        <div class="top-bar-btns">
+          <button class="btn-new" onclick="openTicketModal()">New Ticket</button>
+        </div>
+      </div>
+      
+      <div class="inner">
+        <div class="stats">
+          <div class="stat"><div class="stat-label">OPEN TICKETS</div><div class="stat-val" id="openCount">0</div></div>
+          <div class="stat"><div class="stat-label">CLOSED TICKETS</div><div class="stat-val" id="closedCount">0</div></div>
+          <div class="stat"><div class="stat-label">ESCALATED</div><div class="stat-val" id="escalatedCount">0</div></div>
+        </div>
+
+        <div class="filters">
+          <input type="text" placeholder="Search tickets..." id="searchTicketInput" onkeyup="filterTickets()">
+          <select id="statusTicketFilter" onchange="filterTickets()">
+            <option value="">All Status</option>
+            <option value="Open">Open</option>
+            <option value="Closed">Closed</option>
+            <option value="Escalated">Escalated</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:10%">Date</th>
+                <th style="width:12%">Case #</th>
+                <th style="width:18%">Subject</th>
+                <th style="width:12%">How Initiated</th>
+                <th style="width:10%">Status</th>
+                <th style="width:12%">Contact Name</th>
+                <th style="width:12%">Ticket Link</th>
+                <th style="width:14%">Notes</th>
+                <th style="width:8%">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ticketsTable">
+              <tr><td colspan="9" class="empty-row">No tickets found. Click "New Ticket" to create one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RMA Tracking App -->
+  <div id="rma-tracking" class="app-view">
+    <div class="back-bar">
+      <button class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back to Hub
+      </button>
+      <span class="back-label">RMA Tracking</span>
+    </div>
+    
+    <div class="inner-app">
+      <div class="top-bar">
+        <h2>RMA TRACKING</h2>
+        <div class="top-bar-btns">
+          <button class="btn-new" onclick="openRMAModal()">New RMA</button>
+        </div>
+      </div>
+      
+      <div class="inner">
+        <div class="stats">
+          <div class="stat"><div class="stat-label">IN PROGRESS</div><div class="stat-val" id="inProgressCount">0</div></div>
+          <div class="stat"><div class="stat-label">COMPLETED</div><div class="stat-val" id="completedCount">0</div></div>
+          <div class="stat"><div class="stat-label">NEED FOLLOW UP</div><div class="stat-val" id="followUpCount">0</div></div>
+          <div class="stat"><div class="stat-label">AB4'S IN TRANSIT</div><div class="stat-val" id="ab4TransitCount">0</div></div>
+        </div>
+
+        <div class="filters">
+          <input type="text" placeholder="Search RMAs..." id="searchRMAInput" onkeyup="filterRMAs()">
+          <select id="statusRMAFilter" onchange="filterRMAs()">
+            <option value="">All Status</option>
+            <option value="Canceled">Canceled</option>
+            <option value="Completed (shown in e.com)">Completed (shown in e.com)</option>
+            <option value="Closed (in D365)">Closed (in D365)</option>
+            <option value="Need Follow Up">Need Follow Up</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Processing in D365">Processing in D365</option>
+            <option value="Shipped (PD to Axon)">Shipped (PD to Axon)</option>
+            <option value="Shipped (Axon to PD)">Shipped (Axon to PD)</option>
+          </select>
+          <select id="tapReturnFilter" onchange="filterRMAs()">
+            <option value="">TAP Return - All</option>
+            <option value="Yes">TAP Return - Yes</option>
+            <option value="No">TAP Return - No</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:9%">Date</th>
+                <th style="width:10%">RMA #</th>
+                <th style="width:12%">Salesforce #</th>
+                <th style="width:8%">TAP Return</th>
+                <th style="width:12%"># Items Returned</th>
+                <th style="width:8%"># AB4's</th>
+                <th style="width:15%">Status</th>
+                <th style="width:18%">Notes</th>
+                <th style="width:8%">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rmaTable">
+              <tr><td colspan="9" class="empty-row">No RMAs found. Click "New RMA" to create one.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticket Modal -->
+  <div id="ticketModal" class="modal-bg" style="display:none">
+    <div class="modal">
+      <h3 id="ticketModalTitle">New Support Ticket</h3>
+      <form id="ticketForm">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="ticketDate">Date</label>
+            <div class="date-field-wrap">
+              <input type="date" id="ticketDate" required onmousedown="openCal('ticketDate');return false">
+              <div class="cal-popup" id="ticketDatePop"></div>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="caseNum">Case Number</label>
+            <input type="text" id="caseNum" placeholder="e.g., 2024-001" required>
+          </div>
+        </div>
+        
+        <div class="form-field form-full">
+          <label for="subject">Subject</label>
+          <input type="text" id="subject" placeholder="Brief description of the issue" required>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="howInitiated">How Initiated</label>
+            <select id="howInitiated" required>
+              <option value="">Select method</option>
+              <option value="Email">Email</option>
+              <option value="JIRA">JIRA</option>
+              <option value="Phone">Phone</option>
+              <option value="Salesforce">Salesforce</option>
+              <option value="Service Hub">Service Hub</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="ticketStatus">Status</label>
+            <select id="ticketStatus" required>
+              <option value="">Select status</option>
+              <option value="Open">Open</option>
+              <option value="Closed">Closed</option>
+              <option value="Escalated">Escalated</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="contactName">Contact Name</label>
+            <select id="contactName" required>
+              <option value="">Select contact</option>
+              <option value="Bobby Rodriguez">Bobby Rodriguez</option>
+              <option value="Brent Smith">Brent Smith</option>
+              <option value="Christopher Garcia">Christopher Garcia</option>
+              <option value="Joey Villareal">Joey Villareal</option>
+              <option value="Lana Baloun">Lana Baloun</option>
+              <option value="Luis Alvarado">Luis Alvarado</option>
+              <option value="Rodney Magee">Rodney Magee</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="ticketLink">Ticket Link</label>
+            <input type="url" id="ticketLink" placeholder="https://...">
+          </div>
+        </div>
+
+        <div class="form-field form-full">
+          <label for="ticketNotes">Notes</label>
+          <textarea id="ticketNotes" placeholder="Additional details, updates, or comments"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeTicketModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- RMA Modal -->
+  <div id="rmaModal" class="modal-bg" style="display:none">
+    <div class="modal">
+      <h3 id="rmaModalTitle">New RMA</h3>
+      <form id="rmaForm">
+        <div class="form-third">
+          <div class="form-field">
+            <label for="rmaDate">Date</label>
+            <div class="date-field-wrap">
+              <input type="date" id="rmaDate" required onmousedown="openCal('rmaDate');return false">
+              <div class="cal-popup" id="rmaDatePop"></div>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="rmaNumber">RMA #</label>
+            <input type="text" id="rmaNumber" placeholder="e.g., RMA-2024-001" required>
+          </div>
+          <div class="form-field">
+            <label for="salesforceNumber">Salesforce #</label>
+            <input type="text" id="salesforceNumber" placeholder="SF Case Number">
+          </div>
+        </div>
+        
+        <div class="form-third">
+          <div class="form-field">
+            <label for="tapReturn">TAP Return</label>
+            <select id="tapReturn" required>
+              <option value="">Select option</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="itemsReturned"># Items Returned</label>
+            <input type="number" id="itemsReturned" placeholder="0" min="0">
+          </div>
+          <div class="form-field">
+            <label for="ab4Items"># AB4's</label>
+            <input type="number" id="ab4Items" placeholder="0" min="0">
+          </div>
+        </div>
+
+        <div class="form-field form-full">
+          <label for="rmaStatus">Status</label>
+          <select id="rmaStatus" required>
+            <option value="">Select status</option>
+            <option value="Canceled">Canceled</option>
+            <option value="Completed (shown in e.com)">Completed (shown in e.com)</option>
+            <option value="Closed (in D365)">Closed (in D365)</option>
+            <option value="Need Follow Up">Need Follow Up</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Processing in D365">Processing in D365</option>
+            <option value="Shipped (PD to Axon)">Shipped (PD to Axon)</option>
+            <option value="Shipped (Axon to PD)">Shipped (Axon to PD)</option>
+          </select>
+        </div>
+
+        <div class="form-field form-full">
+          <label for="rmaNotes">Notes</label>
+          <textarea id="rmaNotes" placeholder="Additional details, updates, or comments"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeRMAModal()">Cancel</button>
+          <button type="submit" class="btn-save">Save RMA</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Load data from localStorage so it persists between sessions when opened in browser
+let tickets = JSON.parse(localStorage.getItem('axon_tickets') || '[]');
+let rmas = JSON.parse(localStorage.getItem('axon_rmas') || '[]');
+let editingTicketIndex = -1;
+let editingRMAIndex = -1;
+
+document.addEventListener('DOMContentLoaded', function() {
+  var t = todayISO();
+  document.getElementById('ticketDate').value = t;
+  document.getElementById('rmaDate').value = t;
+  renderTickets();
+  updateTicketStats();
+  renderRMAs();
+  updateRMAStats();
+  if (localStorage.getItem('axon_theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('themeCheck').checked = true;
+  }
+});
+
+function toggleTheme() {
+  const isLight = document.getElementById('themeCheck').checked;
+  document.body.classList.toggle('light', isLight);
+  localStorage.setItem('axon_theme', isLight ? 'light' : 'dark');
+}
+
+function localDate(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return new Date(y, m - 1, d).toLocaleDateString();
+}
+
+function saveData() {
+  localStorage.setItem('axon_tickets', JSON.stringify(tickets));
+  localStorage.setItem('axon_rmas', JSON.stringify(rmas));
+}
+
+function openApp(appId) {
+  document.getElementById('landing').style.display = 'none';
+  document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+  document.getElementById(appId).classList.add('active');
+}
+
+function goBack() {
+  document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('landing').style.display = 'block';
+}
+
+// TICKET FUNCTIONS
+function openTicketModal(index) {
+  editingTicketIndex = (index === undefined) ? -1 : index;
+  const modal = document.getElementById('ticketModal');
+  const form = document.getElementById('ticketForm');
+  const title = document.getElementById('ticketModalTitle');
+  
+  if (editingTicketIndex >= 0) {
+    title.textContent = 'Edit Support Ticket';
+    const t = tickets[editingTicketIndex];
+    document.getElementById('ticketDate').value = t.date;
+    document.getElementById('caseNum').value = t.caseNum;
+    document.getElementById('subject').value = t.subject;
+    document.getElementById('howInitiated').value = t.howInitiated;
+    document.getElementById('ticketStatus').value = t.status;
+    document.getElementById('contactName').value = t.contactName;
+    document.getElementById('ticketLink').value = t.ticketLink;
+    document.getElementById('ticketNotes').value = t.notes;
+  } else {
+    title.textContent = 'New Support Ticket';
+    form.reset();
+    document.getElementById('ticketDate').value = todayISO();
+  }
+  modal.style.display = 'flex';
+}
+
+function closeTicketModal() {
+  document.getElementById('ticketModal').style.display = 'none';
+  editingTicketIndex = -1;
+}
+
+function deleteTicket(index) {
+  if (confirm('Are you sure you want to delete this ticket?')) {
+    tickets.splice(index, 1);
+    saveData();
+    renderTickets();
+    updateTicketStats();
+  }
+}
+
+function updateTicketStats() {
+  document.getElementById('openCount').textContent = tickets.filter(t => t.status === 'Open').length;
+  document.getElementById('closedCount').textContent = tickets.filter(t => t.status === 'Closed').length;
+  document.getElementById('escalatedCount').textContent = tickets.filter(t => t.status === 'Escalated').length;
+}
+
+function getTicketStatusBadge(status) {
+  const cls = status === 'Open' ? 'badge-in-progress' : status === 'Closed' ? 'badge-completed' : status === 'Escalated' ? 'badge-canceled' : 'badge-closed';
+  return '<span class="badge ' + cls + '">' + status + '</span>';
+}
+
+function renderTickets() {
+  const tbody = document.getElementById('ticketsTable');
+  if (tickets.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-row">No tickets found. Click "New Ticket" to create one.</td></tr>';
+    return;
+  }
+  const sorted = tickets.map(function(t, i) { return Object.assign({}, t, {_idx: i}); })
+    .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+  tbody.innerHTML = sorted.map(function(t) {
+    var i = t._idx;
+    return '<tr class="data-row">' +
+      '<td>' + localDate(t.date) + '</td>' +
+      '<td>' + t.caseNum + '</td>' +
+      '<td>' + t.subject + '</td>' +
+      '<td><span class="badge badge-closed">' + t.howInitiated + '</span></td>' +
+      '<td>' + getTicketStatusBadge(t.status) + '</td>' +
+      '<td>' + t.contactName + '</td>' +
+      '<td>' + (t.ticketLink ? '<a href="' + t.ticketLink + '" target="_blank" class="ticket-link">' + t.ticketLink + '</a>' : '-') + '</td>' +
+      '<td class="notes-cell">' + (t.notes || '-') + '</td>' +
+      '<td><button class="icon-btn" onclick="openTicketModal(' + i + ')" title="Edit">✏️</button>' +
+      '<button class="icon-btn" onclick="deleteTicket(' + i + ')" title="Delete">🗑️</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filterTickets() {
+  const search = document.getElementById('searchTicketInput').value.toLowerCase();
+  const statusFilter = document.getElementById('statusTicketFilter').value;
+  document.querySelectorAll('#ticketsTable tr.data-row').forEach(function(row) {
+    const c = row.children;
+    const matchesSearch = !search || c[1].textContent.toLowerCase().includes(search) || c[2].textContent.toLowerCase().includes(search) || c[7].textContent.toLowerCase().includes(search);
+    const matchesStatus = !statusFilter || c[4].textContent.trim() === statusFilter;
+    row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+  });
+}
+
+function copyTicketJSON() {
+  navigator.clipboard.writeText(JSON.stringify(tickets, null, 2)).then(function() {
+    const btn = document.getElementById('copyTicketBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'Copy JSON'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// RMA FUNCTIONS
+function openRMAModal(index) {
+  editingRMAIndex = (index === undefined) ? -1 : index;
+  const modal = document.getElementById('rmaModal');
+  const form = document.getElementById('rmaForm');
+  const title = document.getElementById('rmaModalTitle');
+  
+  if (editingRMAIndex >= 0) {
+    title.textContent = 'Edit RMA';
+    const r = rmas[editingRMAIndex];
+    document.getElementById('rmaDate').value = r.date;
+    document.getElementById('rmaNumber').value = r.rmaNumber;
+    document.getElementById('salesforceNumber').value = r.salesforceNumber;
+    document.getElementById('tapReturn').value = r.tapReturn;
+    document.getElementById('itemsReturned').value = r.itemsReturned;
+    document.getElementById('ab4Items').value = r.ab4Items;
+    document.getElementById('rmaStatus').value = r.status;
+    document.getElementById('rmaNotes').value = r.notes;
+  } else {
+    title.textContent = 'New RMA';
+    form.reset();
+    document.getElementById('rmaDate').value = todayISO();
+  }
+  modal.style.display = 'flex';
+}
+
+function closeRMAModal() {
+  document.getElementById('rmaModal').style.display = 'none';
+  editingRMAIndex = -1;
+}
+
+function deleteRMA(index) {
+  if (confirm('Are you sure you want to delete this RMA?')) {
+    rmas.splice(index, 1);
+    saveData();
+    renderRMAs();
+    updateRMAStats();
+  }
+}
+
+function updateRMAStats() {
+  document.getElementById('inProgressCount').textContent = rmas.filter(r => r.status === 'In Progress').length;
+  document.getElementById('completedCount').textContent = rmas.filter(r => r.status === 'Completed (shown in e.com)').length;
+  document.getElementById('followUpCount').textContent = rmas.filter(r => r.status === 'Need Follow Up').length;
+  const transitStatuses = ['In Progress', 'Shipped (PD to Axon)', 'Shipped (Axon to PD)'];
+  document.getElementById('ab4TransitCount').textContent = rmas
+    .filter(r => transitStatuses.includes(r.status))
+    .reduce((sum, r) => sum + (parseInt(r.ab4Items) || 0), 0);
+}
+
+function getRMAStatusBadge(status) {
+  const map = {
+    'Canceled': 'badge-canceled',
+    'Completed (shown in e.com)': 'badge-completed',
+    'Closed (in D365)': 'badge-closed',
+    'Need Follow Up': 'badge-follow-up',
+    'In Progress': 'badge-in-progress',
+    'Processing in D365': 'badge-processing',
+    'Shipped (PD to Axon)': 'badge-shipped-pd',
+    'Shipped (Axon to PD)': 'badge-shipped-axon'
+  };
+  return '<span class="badge ' + (map[status] || 'badge-closed') + '">' + status + '</span>';
+}
+
+function renderRMAs() {
+  const tbody = document.getElementById('rmaTable');
+  if (rmas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-row">No RMAs found. Click "New RMA" to create one.</td></tr>';
+    return;
+  }
+  const sortedRMAs = rmas.map(function(r, i) { return Object.assign({}, r, {_idx: i}); })
+    .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+  tbody.innerHTML = sortedRMAs.map(function(r) {
+    var i = r._idx;
+    return '<tr class="data-row">' +
+      '<td>' + localDate(r.date) + '</td>' +
+      '<td>' + r.rmaNumber + '</td>' +
+      '<td>' + (r.salesforceNumber || '-') + '</td>' +
+      '<td><span class="badge badge-closed">' + r.tapReturn + '</span></td>' +
+      '<td>' + (r.itemsReturned || '0') + '</td>' +
+      '<td>' + (r.ab4Items || '0') + '</td>' +
+      '<td>' + getRMAStatusBadge(r.status) + '</td>' +
+      '<td class="notes-cell">' + (r.notes || '-') + '</td>' +
+      '<td><button class="icon-btn" onclick="openRMAModal(' + i + ')" title="Edit">✏️</button>' +
+      '<button class="icon-btn" onclick="deleteRMA(' + i + ')" title="Delete">🗑️</button></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function filterRMAs() {
+  const search = document.getElementById('searchRMAInput').value.toLowerCase();
+  const statusFilter = document.getElementById('statusRMAFilter').value;
+  const tapFilter = document.getElementById('tapReturnFilter').value;
+  document.querySelectorAll('#rmaTable tr.data-row').forEach(function(row) {
+    const c = row.children;
+    const matchesSearch = !search || c[1].textContent.toLowerCase().includes(search) || c[2].textContent.toLowerCase().includes(search) || c[7].textContent.toLowerCase().includes(search);
+    const matchesStatus = !statusFilter || c[6].textContent.trim() === statusFilter;
+    const matchesTap = !tapFilter || c[3].textContent.trim() === tapFilter;
+    row.style.display = matchesSearch && matchesStatus && matchesTap ? '' : 'none';
+  });
+}
+
+function copyRMAJSON() {
+  navigator.clipboard.writeText(JSON.stringify(rmas, null, 2)).then(function() {
+    const btn = document.getElementById('copyRMABtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'Copy JSON'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+document.getElementById('ticketForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const data = {
+    date: document.getElementById('ticketDate').value,
+    caseNum: document.getElementById('caseNum').value,
+    subject: document.getElementById('subject').value,
+    howInitiated: document.getElementById('howInitiated').value,
+    status: document.getElementById('ticketStatus').value,
+    contactName: document.getElementById('contactName').value,
+    ticketLink: document.getElementById('ticketLink').value,
+    notes: document.getElementById('ticketNotes').value
+  };
+  if (editingTicketIndex >= 0) tickets[editingTicketIndex] = data;
+  else tickets.push(data);
+  saveData();
+  renderTickets();
+  updateTicketStats();
+  closeTicketModal();
+});
+
+document.getElementById('rmaForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const data = {
+    date: document.getElementById('rmaDate').value,
+    rmaNumber: document.getElementById('rmaNumber').value,
+    salesforceNumber: document.getElementById('salesforceNumber').value,
+    tapReturn: document.getElementById('tapReturn').value,
+    itemsReturned: document.getElementById('itemsReturned').value,
+    ab4Items: document.getElementById('ab4Items').value,
+    status: document.getElementById('rmaStatus').value,
+    notes: document.getElementById('rmaNotes').value
+  };
+  if (editingRMAIndex >= 0) rmas[editingRMAIndex] = data;
+  else rmas.push(data);
+  saveData();
+  renderRMAs();
+  updateRMAStats();
+  closeRMAModal();
+});
+
+document.getElementById('ticketModal').addEventListener('click', function(e) { if (e.target === this) closeTicketModal(); });
+document.getElementById('rmaModal').addEventListener('click', function(e) { if (e.target === this) closeRMAModal(); });
+
+function todayISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+var _cal = {field: null, year: 0, month: 0};
+
+function openCal(id) {
+  document.querySelectorAll('.cal-popup').forEach(function(p){ p.style.display='none'; });
+  var pop = document.getElementById(id+'Pop');
+  if (!pop) return;
+  var val = document.getElementById(id).value;
+  var now = new Date();
+  if (val) {
+    var pts = val.split('-');
+    _cal = {field: id, year: +pts[0], month: +pts[1]-1};
+  } else {
+    _cal = {field: id, year: now.getFullYear(), month: now.getMonth()};
+  }
+  _renderCal(pop);
+  pop.style.display = 'block';
+  document.getElementById(id).focus();
+}
+
+function _renderCal(pop) {
+  var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  var y = _cal.year, m = _cal.month;
+  var fd = new Date(y, m, 1).getDay();
+  var dim = new Date(y, m+1, 0).getDate();
+  var sel = document.getElementById(_cal.field).value;
+  var tn = new Date();
+  var ts = tn.getFullYear()+'-'+String(tn.getMonth()+1).padStart(2,'0')+'-'+String(tn.getDate()).padStart(2,'0');
+  var h = '<div class="cal-header">'
+    + '<button type="button" class="cal-nav" onmousedown="_calNav(-1);return false">&#8249;</button>'
+    + '<span class="cal-month">'+MN[m]+' '+y+'</span>'
+    + '<button type="button" class="cal-nav" onmousedown="_calNav(1);return false">&#8250;</button>'
+    + '</div><div class="cal-grid">';
+  DN.forEach(function(d){ h += '<div class="cal-dname">'+d+'</div>'; });
+  for (var i=0; i<fd; i++) h += '<div class="cal-d empty"></div>';
+  for (var d=1; d<=dim; d++) {
+    var ds = y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var c = 'cal-d'+(ds===sel?' sel':'')+(ds===ts?' today':'');
+    h += '<div class="'+c+'" onmousedown="_pickDay(\''+ds+'\');return false">'+d+'</div>';
+  }
+  h += '</div>';
+  pop.innerHTML = h;
+}
+
+function _calNav(dir) {
+  _cal.month += dir;
+  if (_cal.month < 0) { _cal.month = 11; _cal.year--; }
+  if (_cal.month > 11) { _cal.month = 0; _cal.year++; }
+  _renderCal(document.getElementById(_cal.field+'Pop'));
+}
+
+function _pickDay(ds) {
+  document.getElementById(_cal.field).value = ds;
+  document.getElementById(_cal.field+'Pop').style.display = 'none';
+  _cal.field = null;
+}
+
+document.addEventListener('mousedown', function(e) {
+  if (!e.target.closest('.date-field-wrap')) {
+    document.querySelectorAll('.cal-popup').forEach(function(p){ p.style.display='none'; });
+    _cal.field = null;
+  }
+});
+</script>
+
+</body>
+</html>
