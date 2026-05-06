@@ -35,7 +35,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 .inner-app{background:#111;min-height:400px}
 .top-bar{background:#FFE000;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.top-bar h2{font-size:30px;font-weight:700;color:#111;letter-spacing:0.05em}
+.top-bar h2{font-size:22px;font-weight:700;color:#111;letter-spacing:0.05em}
 .top-bar-btns{display:flex;gap:8px}
 .btn-new{background:#111;color:#FFE000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer}
 .btn-new:hover{background:#333}
@@ -99,9 +99,9 @@ td.notes-cell{white-space:normal;word-break:break-word}
 /* Theme toggle */
 .theme-toggle{position:absolute;top:1.1rem;right:1.1rem;z-index:50;cursor:pointer;width:42px;height:24px;display:block}
 .theme-toggle input{display:none}
-.toggle-slider{position:absolute;inset:0;background:#555;border-radius:12px;transition:background 0.2s;border:1px solid #888}
-.toggle-slider::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.4)}
-.theme-toggle input:checked + .toggle-slider{background:#333;border-color:#aaa}
+.toggle-slider{position:absolute;inset:0;background:rgba(0,0,0,0.2);border-radius:12px;transition:background 0.2s}
+.toggle-slider::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;background:#111;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.theme-toggle input:checked + .toggle-slider{background:rgba(0,0,0,0.3)}
 .theme-toggle input:checked + .toggle-slider::after{transform:translateX(18px)}
 
 /* Light mode */
