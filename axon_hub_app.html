@@ -412,13 +412,15 @@ tr:hover .dock-today-btn{opacity:1;pointer-events:auto}
 <div class="hub-header">
 <h1>AXON APP HUB</h1>
 <p>Select an application to get started</p>
-<div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
   <button onclick="exportHubBackup()" style="background:#2a2a2a;border:1px solid #FFE000;color:#FFE000;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">⬇ Export Backup</button>
   <label style="background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">
     ⬆ Restore Backup
     <input type="file" accept=".json" onchange="importHubBackup(this)" style="display:none">
   </label>
+  <button id="autoBackupBtn" onclick="setupAutoBackup()" style="background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">☁ Set Auto-Backup Folder</button>
 </div>
+<div id="autoBackupStatus" style="font-size:11px;color:#666;margin-top:6px;min-height:16px;text-align:center"></div>
 <div id="fsSyncRow" style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:7px 12px;background:rgba(0,0,0,0.25);border-radius:8px;max-width:420px;margin-left:auto;margin-right:auto"></div>
 </div>
 <div class="hub-body">
@@ -2275,6 +2277,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderDocks();
   updateDockStats();
   updateProjectsCount();
+  tryAutoBackupOnLoad();
 });
 
 function saveData() {
@@ -2403,6 +2406,159 @@ function importHubBackup(input) {
   };
   reader.readAsText(file);
 }
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Auto-Backup (File System Access API) ────────────────────────────────────
+(function() {
+  const DB_NAME = 'axon_autobackup';
+  const STORE   = 'handle';
+
+  function _openDB() {
+    return new Promise(function(resolve, reject) {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function(e) { e.target.result.createObjectStore(STORE); };
+      req.onsuccess  = function(e) { resolve(e.target.result); };
+      req.onerror    = function(e) { reject(e.target.error); };
+    });
+  }
+  function _saveHandle(h) {
+    return _openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(h, 'dir');
+        tx.oncomplete = resolve;
+        tx.onerror = function(e) { reject(e.target.error); };
+      });
+    });
+  }
+  function _getHandle() {
+    return _openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get('dir');
+        req.onsuccess = function(e) { resolve(e.target.result || null); };
+        req.onerror   = function(e) { reject(e.target.error); };
+      });
+    });
+  }
+  function _clearHandle() {
+    return _openDB().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete('dir');
+        tx.oncomplete = resolve;
+        tx.onerror = function(e) { reject(e.target.error); };
+      });
+    });
+  }
+
+  function _buildPayload() {
+    const backup = { version: 2, exportedAt: new Date().toISOString(), data: {} };
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('axon_')) {
+        try { backup.data[key] = JSON.parse(localStorage.getItem(key)); }
+        catch(e) { backup.data[key] = localStorage.getItem(key); }
+      }
+    }
+    BACKUP_KEYS.forEach(function(key) {
+      if (key in backup.data) return;
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        try { backup.data[key] = JSON.parse(raw); }
+        catch(e) { backup.data[key] = raw; }
+      }
+    });
+    return backup;
+  }
+
+  async function _writeToFolder(dirHandle) {
+    const date     = new Date().toISOString().slice(0, 10);
+    const filename = 'AxonAppHub_backup_' + date + '.json';
+    const fh       = await dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fh.createWritable();
+    await writable.write(JSON.stringify(_buildPayload(), null, 2));
+    await writable.close();
+    return filename;
+  }
+
+  function _setStatus(msg, color) {
+    const el = document.getElementById('autoBackupStatus');
+    if (el) { el.textContent = msg; el.style.color = color || '#666'; }
+  }
+  function _setBtn(label, color, borderColor, handler) {
+    const btn = document.getElementById('autoBackupBtn');
+    if (!btn) return;
+    btn.textContent    = label;
+    btn.style.color       = color;
+    btn.style.borderColor = borderColor;
+    btn.onclick = handler;
+  }
+
+  function _markActive() {
+    _setBtn('✓ Auto-Backup On (click to disable)', '#4CAF50', '#4CAF50', window.disableAutoBackup);
+  }
+  function _markNeedsPermission() {
+    _setBtn('⚠ Click to Resume Auto-Backup', '#FFE000', '#FFE000', window.resumeAutoBackup);
+    _setStatus('Auto-backup folder needs permission — click the button above.', '#FFE000');
+  }
+  function _markOff() {
+    _setBtn('☁ Set Auto-Backup Folder', '#aaa', '#555', window.setupAutoBackup);
+    _setStatus('');
+  }
+
+  window.setupAutoBackup = async function() {
+    if (!('showDirectoryPicker' in window)) {
+      alert('Auto-backup requires Chrome or Edge. Your browser does not support it.');
+      return;
+    }
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'documents' });
+      await _saveHandle(dirHandle);
+      const filename = await _writeToFolder(dirHandle);
+      _markActive();
+      _setStatus('Auto-backup active — saves to this folder each time you open the app.', '#4CAF50');
+      alert('Auto-backup enabled!\n\nFile saved: ' + filename + '\n\nFrom now on a backup is written automatically every time you open the app.');
+    } catch(e) {
+      if (e.name !== 'AbortError') { console.error('[AutoBackup] setup error', e); }
+    }
+  };
+
+  window.disableAutoBackup = async function() {
+    if (!confirm('Disable auto-backup?')) return;
+    await _clearHandle();
+    _markOff();
+  };
+
+  window.resumeAutoBackup = async function() {
+    try {
+      const h = await _getHandle();
+      if (!h) { _markOff(); return; }
+      const perm = await h.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        const filename = await _writeToFolder(h);
+        _markActive();
+        _setStatus('Backed up: ' + filename, '#4CAF50');
+      }
+    } catch(e) { console.error('[AutoBackup] resume error', e); }
+  };
+
+  window.tryAutoBackupOnLoad = async function() {
+    if (!('showDirectoryPicker' in window)) return;
+    try {
+      const h = await _getHandle();
+      if (!h) return;
+      const perm = await h.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        const filename = await _writeToFolder(h);
+        _markActive();
+        _setStatus('Auto-backed up: ' + filename, '#4CAF50');
+      } else {
+        _markNeedsPermission();
+      }
+    } catch(e) { console.warn('[AutoBackup] load check failed', e); }
+  };
+})();
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── File System Sync ────────────────────────────────────────────────────────
