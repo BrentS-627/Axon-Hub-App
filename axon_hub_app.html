@@ -659,11 +659,11 @@ Back to Hub
 <!-- TAP Upgrade App -->
 <div id="tap-upgrade" class="app-view">
 <div class="back-bar">
-<button class="back-btn" onclick="goBack()">
+<button class="back-btn" onclick="openApp('inv-equipment')">
 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        Back to Hub
+        Back
 </button>
-<span class="back-label">TAP Upgrade</span>
+<span class="back-label">Inventory &amp; Equipment › TAP Upgrade</span>
 </div>
 <div class="inner-app">
 <div class="top-bar">
@@ -1174,11 +1174,11 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <!-- CTT In Stock Inventory (inlined from CTT_Inventory.html) -->
 <div id="asset-inventory" class="app-view">
 <div class="back-bar">
-<button class="back-btn" onclick="goBack()">
+<button class="back-btn" onclick="openApp('inv-equipment')">
 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        Back to Hub
+        Back
 </button>
-<span class="back-label">CTT In Stock Inventory</span>
+<span class="back-label">Inventory &amp; Equipment › CTT In Stock Inventory</span>
 </div>
 <div id="inv-app">
 <div class="header">
@@ -4361,7 +4361,7 @@ function dockGoBack() {
   if (currentDockLocation) {
     showDockLandingScreen();
   } else {
-    goBack();
+    openApp('inv-equipment');
   }
 }
 
