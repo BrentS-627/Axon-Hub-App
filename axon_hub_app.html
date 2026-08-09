@@ -659,11 +659,11 @@ Back to Hub
 <!-- TAP Upgrade App -->
 <div id="tap-upgrade" class="app-view">
 <div class="back-bar">
-<button class="back-btn" onclick="openApp('inv-equipment')">
+<button class="back-btn" onclick="goBack()">
 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        Back
+        Back to Hub
 </button>
-<span class="back-label">Inventory &amp; Equipment › TAP Upgrade</span>
+<span class="back-label">TAP Upgrade</span>
 </div>
 <div class="inner-app">
 <div class="top-bar">
@@ -671,6 +671,9 @@ Back to Hub
 <div class="top-bar-btns">
 <button class="btn-new" onclick="openTapModal()">New TAP Upgrade</button>
 </div>
+</div>
+<div style="padding:10px 1.5rem 0">
+<button onclick="openApp('inv-equipment')" style="background:none;border:1px solid #555;color:#FFE000;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">← Back to Inventory &amp; Equipment</button>
 </div>
 <div class="inner">
 <div class="stats">
@@ -943,6 +946,9 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <button class="btn-new" onclick="openDockModal()">New Dock Entry</button>
 </div>
 </div>
+<div style="padding:10px 1.5rem 0">
+<button onclick="openApp('inv-equipment')" style="background:none;border:1px solid #555;color:#FFE000;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">← Back to Inventory &amp; Equipment</button>
+</div>
 <div class="inner">
 <div class="dock-summary-widgets">
 <div class="dock-summary-widget">
@@ -1174,13 +1180,16 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <!-- CTT In Stock Inventory (inlined from CTT_Inventory.html) -->
 <div id="asset-inventory" class="app-view">
 <div class="back-bar">
-<button class="back-btn" onclick="openApp('inv-equipment')">
+<button class="back-btn" onclick="goBack()">
 <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        Back
+        Back to Hub
 </button>
-<span class="back-label">Inventory &amp; Equipment › CTT In Stock Inventory</span>
+<span class="back-label">CTT In Stock Inventory</span>
 </div>
 <div id="inv-app">
+<div style="padding:10px 1.5rem 0">
+<button onclick="openApp('inv-equipment')" style="background:none;border:1px solid #555;color:#FFE000;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">← Back to Inventory &amp; Equipment</button>
+</div>
 <div class="header">
   <div class="header-left">
     <div>
@@ -4361,7 +4370,7 @@ function dockGoBack() {
   if (currentDockLocation) {
     showDockLandingScreen();
   } else {
-    openApp('inv-equipment');
+    goBack();
   }
 }
 
