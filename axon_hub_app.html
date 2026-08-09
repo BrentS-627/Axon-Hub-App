@@ -2987,7 +2987,11 @@ function renderRMAs() {
     tbody.innerHTML = '<tr><td colspan="9" class="empty-row">No RMAs found. Click "New RMA" to create one.</td></tr>';
     return;
   }
-  tbody.innerHTML = rmas.map(function(r, i) {
+  const sorted = rmas.map(function(r, i) { return { r: r, i: i }; }).sort(function(a, b) {
+    return (b.r.date || '').localeCompare(a.r.date || '');
+  });
+  tbody.innerHTML = sorted.map(function(entry) {
+    const r = entry.r, i = entry.i;
     const driveCell = r.driveLink
       ? '<a href="' + r.driveLink + '" target="_blank" class="ticket-link">📁 Drive</a>'
       : '-';
