@@ -496,6 +496,12 @@ Back to Hub
 <div class="card-desc">Body camera dock information and schematics.</div>
 <button class="card-btn">Open App</button>
 </div>
+<div class="app-card" onclick="openApp('interview-rooms')">
+<div class="card-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+<div class="card-title">INTERVIEW ROOMS</div>
+<div class="card-desc">Track and manage interview room equipment and configurations.</div>
+<button class="card-btn">Open App</button>
+</div>
 <div class="app-card" onclick="openApp('tap-upgrade')">
 <div class="card-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg></div>
 <div class="card-title">TAP UPGRADE</div>
@@ -896,6 +902,35 @@ Back to Hub
 <button type="submit" class="btn-save">Save Feature Request</button>
 </div>
 </form>
+</div>
+</div>
+
+<!-- Interview Rooms App -->
+<div id="interview-rooms" class="app-view">
+<div class="back-bar">
+<button class="back-btn" onclick="goBack()">
+<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        Back to Hub
+</button>
+<span class="back-label">Interview Rooms</span>
+</div>
+<div class="inner-app">
+<div class="top-bar">
+<h2>INTERVIEW ROOMS</h2>
+<div class="top-bar-btns">
+<button class="btn-new" onclick="alert('Coming soon')">+ New Entry</button>
+</div>
+</div>
+<div style="padding:10px 1.5rem 0">
+<button onclick="openApp('inv-equipment')" style="background:none;border:1px solid #555;color:#FFE000;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">← Back to Inventory &amp; Equipment</button>
+</div>
+<div class="inner">
+<div style="background:#363636;border:0.5px solid #4a4a4a;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem">
+<div style="font-size:13px;color:#FFE000;font-weight:700;letter-spacing:0.04em;margin-bottom:6px">INTERVIEW ROOMS</div>
+<div style="font-size:13px;color:#fff;line-height:1.5">Track and manage interview room equipment and configurations.</div>
+</div>
+<div style="text-align:center;padding:3rem 1rem;color:#aaa;font-size:13px">Module coming soon — content will be built out here.</div>
+</div>
 </div>
 </div>
 
