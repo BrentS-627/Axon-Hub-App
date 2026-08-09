@@ -418,7 +418,7 @@ tr:hover .dock-today-btn{opacity:1;pointer-events:auto}
   <div style="display:flex;align-items:center;gap:8px">
     <button id="autoBackupBtn" onclick="setupAutoBackup()" style="background:transparent;border:1px solid #444;color:#888;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">☁ Set Auto-Backup Folder</button>
     <div style="width:1px;height:18px;background:#333"></div>
-    <label style="background:transparent;border:1px solid #444;color:#888;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">
+    <label style="background:transparent;border:1px solid #FFE000;color:#FFE000;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">
       ⬆ Restore
       <input type="file" accept=".json" onchange="importHubBackup(this)" style="display:none">
     </label>
@@ -2546,7 +2546,7 @@ function importHubBackup(input) {
       if (perm === 'granted') {
         const filename = await _writeToFolder(h);
         _markActive();
-        _setStatus('Backed up: ' + filename, '#4CAF50');
+        _setStatus('Backed up: ' + filename + ' at ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), '#4CAF50');
       }
     } catch(e) { console.error('[AutoBackup] resume error', e); }
   };
@@ -2560,7 +2560,7 @@ function importHubBackup(input) {
       if (perm === 'granted') {
         const filename = await _writeToFolder(h);
         _markActive();
-        _setStatus('Auto-backed up: ' + filename, '#4CAF50');
+        _setStatus('Auto-backed up: ' + filename + ' at ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), '#4CAF50');
       } else {
         _markNeedsPermission();
       }
