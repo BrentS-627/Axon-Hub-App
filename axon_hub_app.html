@@ -1988,6 +1988,7 @@ Back to Hub
     <h3 style="display:flex;align-items:center;gap:10px;margin:0;color:#FFE000;font-size:22px">📁 Projects <span id="projectsModalCount" style="color:#f97316;font-weight:700;font-size:14px">0</span></h3>
     <button class="btn-new" onclick="createNewProject()">＋ New Project</button>
   </div>
+  <div id="projectStatusFilters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
   <div id="projectsLandingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
   <div id="projectsLandingEmpty" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px">No projects yet. Click "+ New Project" to create one.</div>
   </div><!-- end activityProjectsView -->
@@ -6758,6 +6759,7 @@ let projectList    = (function() {
 
 let projectEntries     = JSON.parse(localStorage.getItem('axon_projects') || '[]');
 let currentProjectName = '';
+let currentProjectStatusFilter = '';
 let editingProjectIndex = -1;
 
 function saveProjectList()    { localStorage.setItem('axon_project_list', JSON.stringify(projectList)); }
@@ -6780,19 +6782,65 @@ function createNewProject() {
   updateProjectsCount();
 }
 
+function getStatusColor(status) {
+  const map = {
+    'Not Started': '#6b7280',
+    'In Progress': '#3b82f6',
+    'On Hold':     '#f59e0b',
+    'Completed':   '#22c55e',
+    'Cancelled':   '#ef4444'
+  };
+  return map[status] || '#aaa';
+}
+
+function filterProjectsByStatus(status) {
+  currentProjectStatusFilter = status;
+  renderProjectsLanding();
+}
+
 function renderProjectsLanding() {
-  const grid  = document.getElementById('projectsLandingGrid');
-  const empty = document.getElementById('projectsLandingEmpty');
+  const grid      = document.getElementById('projectsLandingGrid');
+  const empty     = document.getElementById('projectsLandingEmpty');
+  const filterBar = document.getElementById('projectStatusFilters');
   if (!grid) return;
-  if (projectList.length === 0) {
+
+  // Build status filter cards
+  if (filterBar) {
+    const statusCounts = {};
+    projectList.forEach(function(p) { const s = p.status || ''; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+    const allLabel = 'All (' + projectList.length + ')';
+    const allActive = !currentProjectStatusFilter;
+    let html = '<div onclick="filterProjectsByStatus(\'\')" style="cursor:pointer;background:' + (allActive ? '#FFE000' : '#2a2a2a') + ';border:1px solid #FFE000;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:' + (allActive ? '#111' : '#FFE000') + ';white-space:nowrap;transition:all 0.15s">' + allLabel + '</div>';
+    projectStatuses.forEach(function(s) {
+      const count = statusCounts[s] || 0;
+      const active = currentProjectStatusFilter === s;
+      const color  = getStatusColor(s);
+      html += '<div onclick="filterProjectsByStatus(\'' + s.replace(/'/g,"\\'") + '\')" style="cursor:pointer;background:' + (active ? color : '#2a2a2a') + ';border:1px solid ' + color + ';border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:' + (active ? '#111' : color) + ';white-space:nowrap;transition:all 0.15s">' + s + ' (' + count + ')</div>';
+    });
+    filterBar.innerHTML = html;
+  }
+
+  // Filter project list by selected status
+  const filtered = currentProjectStatusFilter
+    ? projectList.filter(function(p) { return (p.status || '') === currentProjectStatusFilter; })
+    : projectList;
+
+  if (filtered.length === 0) {
     grid.innerHTML = '';
-    if (empty) empty.style.display = '';
+    if (empty) {
+      empty.textContent = currentProjectStatusFilter
+        ? 'No projects with status "' + currentProjectStatusFilter + '".'
+        : 'No projects yet. Click "+ New Project" to create one.';
+      empty.style.display = '';
+    }
     return;
   }
   if (empty) empty.style.display = 'none';
-  grid.innerHTML = projectList.map(function(p) {
-    const count = projectEntries.filter(function(e) { return e.name === p.name; }).length;
-    const safe  = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"\\'");
+
+  grid.innerHTML = filtered.map(function(p) {
+    const safe        = p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,"\\'");
+    const statusLabel = p.status || '—';
+    const statusColor = getStatusColor(p.status);
     let dueBadge = '';
     if (p.dueDate) {
       const today = new Date(); today.setHours(0,0,0,0);
@@ -6804,7 +6852,7 @@ function renderProjectsLanding() {
     return '<div onclick="openProjectDetail(\'' + safe + '\')" style="cursor:pointer;background:#363636;border:0.5px solid #4a4a4a;border-left:4px solid ' + p.color + ';border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;min-height:100px;transition:background 0.15s" onmouseover="this.style.background=\'#404040\'" onmouseout="this.style.background=\'#363636\'">'
       + '<div style="font-size:24px">📁</div>'
       + '<div style="font-size:15px;font-weight:700;color:#fff">' + p.name.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>'
-      + '<div style="font-size:12px;color:#aaa">' + count + ' entr' + (count === 1 ? 'y' : 'ies') + '</div>'
+      + '<div style="display:flex;align-items:center;gap:5px;margin-top:2px"><span style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';flex-shrink:0;display:inline-block"></span><span style="font-size:12px;color:' + statusColor + ';font-weight:600">' + statusLabel + '</span></div>'
       + dueBadge
       + '</div>';
   }).join('');
