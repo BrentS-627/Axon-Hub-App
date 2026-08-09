@@ -1988,7 +1988,11 @@ Back to Hub
     <h3 style="display:flex;align-items:center;gap:10px;margin:0;color:#FFE000;font-size:22px">📁 Projects <span id="projectsModalCount" style="color:#f97316;font-weight:700;font-size:14px">0</span></h3>
     <button class="btn-new" onclick="createNewProject()">＋ New Project</button>
   </div>
-  <div id="projectStatusFilters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+  <div id="projectStatusFilters" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px"></div>
+  <div id="projectsSeparator" style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <span id="projectsSectionLabel" style="font-size:11px;font-weight:700;color:#888;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap">All Projects</span>
+    <div style="flex:1;height:1px;background:#4a4a4a"></div>
+  </div>
   <div id="projectsLandingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
   <div id="projectsLandingEmpty" style="display:none;padding:48px;text-align:center;color:#888;font-size:14px">No projects yet. Click "+ New Project" to create one.</div>
   </div><!-- end activityProjectsView -->
@@ -6794,7 +6798,7 @@ function getStatusColor(status) {
 }
 
 function filterProjectsByStatus(status) {
-  currentProjectStatusFilter = status;
+  currentProjectStatusFilter = (currentProjectStatusFilter === status) ? '' : status;
   renderProjectsLanding();
 }
 
@@ -6802,22 +6806,31 @@ function renderProjectsLanding() {
   const grid      = document.getElementById('projectsLandingGrid');
   const empty     = document.getElementById('projectsLandingEmpty');
   const filterBar = document.getElementById('projectStatusFilters');
+  const label     = document.getElementById('projectsSectionLabel');
   if (!grid) return;
 
   // Build status filter cards
   if (filterBar) {
     const statusCounts = {};
     projectList.forEach(function(p) { const s = p.status || ''; statusCounts[s] = (statusCounts[s] || 0) + 1; });
-    const allLabel = 'All (' + projectList.length + ')';
-    const allActive = !currentProjectStatusFilter;
-    let html = '<div onclick="filterProjectsByStatus(\'\')" style="cursor:pointer;background:' + (allActive ? '#FFE000' : '#2a2a2a') + ';border:1px solid #FFE000;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:' + (allActive ? '#111' : '#FFE000') + ';white-space:nowrap;transition:all 0.15s">' + allLabel + '</div>';
-    projectStatuses.forEach(function(s) {
-      const count = statusCounts[s] || 0;
+    filterBar.innerHTML = projectStatuses.map(function(s) {
+      const count  = statusCounts[s] || 0;
       const active = currentProjectStatusFilter === s;
       const color  = getStatusColor(s);
-      html += '<div onclick="filterProjectsByStatus(\'' + s.replace(/'/g,"\\'") + '\')" style="cursor:pointer;background:' + (active ? color : '#2a2a2a') + ';border:1px solid ' + color + ';border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:' + (active ? '#111' : color) + ';white-space:nowrap;transition:all 0.15s">' + s + ' (' + count + ')</div>';
-    });
-    filterBar.innerHTML = html;
+      const bg     = active ? '#2d2d2d' : '#232323';
+      const border = active ? '1px solid ' + color : '0.5px solid #4a4a4a';
+      return '<div onclick="filterProjectsByStatus(\'' + s.replace(/'/g,"\\'") + '\')" '
+        + 'style="cursor:pointer;background:' + bg + ';border:' + border + ';border-left:4px solid ' + color + ';border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;transition:background 0.15s" '
+        + 'onmouseover="this.style.background=\'#363636\'" onmouseout="this.style.background=\'' + bg + '\'">'
+        + '<div style="font-size:12px;font-weight:700;color:#ccc;letter-spacing:0.03em">' + s + '</div>'
+        + '<div style="font-size:22px;font-weight:700;color:' + color + ';line-height:1">' + count + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Update section label
+  if (label) {
+    label.textContent = currentProjectStatusFilter ? currentProjectStatusFilter + ' Projects' : 'All Projects';
   }
 
   // Filter project list by selected status
