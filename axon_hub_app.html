@@ -6738,7 +6738,9 @@ function openActivityReport() {
   filtered.forEach(function(a) {
     var h = parseHours(a.timeSpent);
     totalHours += h;
-    var t = a.timeType || 'Unspecified';
+    var rawType = a.timeType || 'Unspecified';
+    var hasOrg = a.client && a.client !== '—' && a.client.trim() !== '';
+    var t = (rawType === 'RD' && !hasOrg) ? 'RD__no_org' : (rawType === 'RD' && hasOrg) ? 'RD__with_org' : rawType;
     byType[t] = byType[t] || { count: 0, hours: 0 };
     byType[t].count++; byType[t].hours += h;
     var o = a.client || '—';
@@ -6757,7 +6759,7 @@ function openActivityReport() {
     return Object.keys(obj).sort(function(a,b){ return obj[b].hours - obj[a].hours; }).map(function(k) {
       var v = obj[k];
       var h = v.hours === 0 ? '—' : (v.hours % 1 === 0 ? v.hours : v.hours.toFixed(1)) + ' hrs';
-      var label = k === 'RD' ? 'RD - Hours Worked on RD' : k;
+      var label = k === 'RD__with_org' ? 'RD - Hours Worked on RD' : k === 'RD__no_org' ? 'RD' : k;
       return '<tr><td>' + esc(label) + '</td><td style="text-align:right">' + h + '</td></tr>';
     }).join('');
   }
