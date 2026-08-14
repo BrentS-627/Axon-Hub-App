@@ -6669,29 +6669,26 @@ document.getElementById('ptoRangeForm').addEventListener('submit', function(e) {
   var note  = document.getElementById('ptoRangeNote').value.trim();
   if (!start || !end) return;
   if (start > end) { alert('Start date must be before or equal to end date.'); return; }
-  // Generate one activity entry per day in the range
-  var cur = new Date(start + 'T00:00:00');
-  var last = new Date(end + 'T00:00:00');
-  var added = 0;
-  while (cur <= last) {
-    var iso = cur.toISOString().slice(0, 10);
-    var entry = {
-      date:       iso,
-      timeType:   'PTO',
-      client:     '',
-      timeSpent:  '8 hours',
-      categories: note ? [note] : [],
-      notes:      ''
-    };
-    activities.push(entry);
-    added++;
-    cur.setDate(cur.getDate() + 1);
-  }
+  // Single entry for the entire range
+  var startD = new Date(start + 'T00:00:00');
+  var endD   = new Date(end   + 'T00:00:00');
+  var days   = Math.round((endD - startD) / 86400000) + 1;
+  var timeSpent = days === 1 ? '10 hours' : days + ' days';
+  var cats = [];
+  if (start !== end) cats.push('Through ' + fmtLocalDate(end));
+  if (note) cats.push(note);
+  var entry = {
+    date:       start,
+    timeType:   'PTO',
+    client:     '',
+    timeSpent:  timeSpent,
+    categories: cats,
+    notes:      ''
+  };
+  activities.push(entry);
   localStorage.setItem('axon_daily_activities', JSON.stringify(activities));
   closePTOModal();
   renderActivities();
-  var msg = added + ' PTO entr' + (added === 1 ? 'y' : 'ies') + ' logged.';
-  alert(msg);
 });
 // ─────────────────────────────────────────────────────────────────────────
 
