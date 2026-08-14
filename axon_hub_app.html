@@ -6747,7 +6747,8 @@ function openActivityReport() {
     return Object.keys(obj).sort(function(a,b){ return obj[b].hours - obj[a].hours; }).map(function(k) {
       var v = obj[k];
       var h = v.hours === 0 ? '—' : (v.hours % 1 === 0 ? v.hours : v.hours.toFixed(1)) + ' hrs';
-      return '<tr><td>' + esc(k) + '</td><td style="text-align:right">' + h + '</td></tr>';
+      var label = k === 'RD' ? 'RD - Hours Worked on RD' : k;
+      return '<tr><td>' + esc(label) + '</td><td style="text-align:right">' + h + '</td></tr>';
     }).join('');
   }
 
