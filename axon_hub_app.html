@@ -6742,7 +6742,7 @@ function openActivityReport() {
     return Object.keys(obj).sort(function(a,b){ return obj[b].hours - obj[a].hours; }).map(function(k) {
       var v = obj[k];
       var h = v.hours === 0 ? '—' : (v.hours % 1 === 0 ? v.hours : v.hours.toFixed(1)) + ' hrs';
-      return '<tr><td>' + esc(k) + '</td><td style="text-align:center">' + v.count + '</td><td style="text-align:right">' + h + '</td></tr>';
+      return '<tr><td>' + esc(k) + '</td><td style="text-align:right">' + h + '</td></tr>';
     }).join('');
   }
 
@@ -6791,9 +6791,9 @@ function openActivityReport() {
   '<h1>Activity Report</h1>' +
   '<div class="sub">' + esc(rangeLabel) + ' &nbsp;·&nbsp; Generated ' + generatedAt + '</div>' +
   '<h2>By Time Type</h2>' +
-  '<table><thead><tr><th>Type</th><th style="text-align:center">Entries</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byType) + '</tbody></table>' +
+  '<table><thead><tr><th>Type</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byType) + '</tbody></table>' +
   '<h2>By Organization</h2>' +
-  '<table><thead><tr><th>Organization</th><th style="text-align:center">Entries</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byOrg) + '</tbody></table>' +
+  '<table><thead><tr><th>Organization</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byOrg) + '</tbody></table>' +
   (catRows ? '<h2>Categories Used</h2><ul>' + catRows + '</ul>' : '') +
   '<h2>Daily Log</h2>' +
   '<table><thead><tr><th style="width:15%">Time Type</th><th style="width:25%">Organization</th><th style="width:15%">Time Spent</th><th>Categories</th></tr></thead><tbody>' + dailyRows + '</tbody></table>' +
