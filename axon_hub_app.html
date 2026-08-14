@@ -6759,7 +6759,7 @@ function openActivityReport() {
     }
     var cats = Array.isArray(a.categories) ? a.categories : (a.category ? [a.category] : []);
     var catStr = cats.length ? cats.map(function(c){ return '<span style="background:#e8e8e8;border-radius:10px;padding:1px 7px;font-size:11px;margin:1px;display:inline-block">' + esc(c) + '</span>'; }).join(' ') : '—';
-    var notesStr = esc(a.notes || '');
+    var notesStr = esc(a.description || '');
     dailyRows += '<tr><td style="padding:6px 10px;color:#555;font-size:12px">' + esc(a.timeType||'—') + '</td>' +
       '<td style="padding:6px 10px;font-size:12px">' + esc(a.client||'—') + '</td>' +
       '<td style="padding:6px 10px;font-size:12px;white-space:nowrap">' + esc(a.timeSpent||'—') + '</td>' +
