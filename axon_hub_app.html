@@ -1860,6 +1860,11 @@ Back to Hub
   <div class="activity-card-title">Personnel Issues <span id="personnelCount" class="activity-card-count">0</span></div>
   <div class="activity-card-sub">Log a personnel issue</div>
   </div>
+  <div class="activity-card" onclick="showActivityView('activityPTOView')" style="background:#0f1f2e;border-color:#1e4a6e">
+  <div class="activity-card-icon">🏖</div>
+  <div class="activity-card-title" style="color:#60a5fa">PTO <span id="ptoCount" class="activity-card-count" style="color:#60a5fa">0</span></div>
+  <div class="activity-card-sub">Log time off</div>
+  </div>
   </div>
   </div>
 
@@ -2056,6 +2061,24 @@ Back to Hub
     </div>
 
   </div><!-- end activityPersonnelView -->
+
+  <!-- ── PTO sub-page ── -->
+  <div id="activityPTOView" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:10px">
+    <button onclick="showActivityView('activityLanding')" style="background:none;border:1px solid #555;color:#FFE000;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">← Back</button>
+    <h3 style="display:flex;align-items:center;gap:10px;margin:0;color:#60a5fa;font-size:22px">🏖 PTO <span id="ptoModalCount" style="color:#60a5fa;font-weight:700;font-size:14px">0 periods</span></h3>
+    <div style="width:80px"></div>
+  </div>
+  <form id="ptoAddForm" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;background:#0f1a2e;border:1px solid #1e3a5e;border-radius:10px;padding:14px 16px">
+    <span style="font-size:13px;color:#aaa;font-weight:700;white-space:nowrap">From</span>
+    <input type="date" id="ptoStart" required style="background:#1a1a1a;border:1px solid #555;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color-scheme:dark">
+    <span style="font-size:13px;color:#aaa;font-weight:700;white-space:nowrap">to</span>
+    <input type="date" id="ptoEnd" required style="background:#1a1a1a;border:1px solid #555;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px;color-scheme:dark">
+    <input type="text" id="ptoNote" placeholder="Note (optional, e.g. vacation, sick)" style="flex:1;min-width:160px;background:#1a1a1a;border:1px solid #555;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px">
+    <button type="submit" class="btn-save" style="height:38px;white-space:nowrap">＋ Save PTO</button>
+  </form>
+  <div id="ptoList" style="max-height:55vh;overflow-y:auto;border:0.5px solid #4a4a4a;border-radius:8px"></div>
+  </div><!-- end activityPTOView -->
 
   <!-- ── PROJECTS sub-page ── -->
   <!-- ── PROJECTS LANDING ── -->
@@ -2405,6 +2428,7 @@ const BACKUP_KEYS = [
   'axon_daily_losses',
   'axon_daily_credits',
   'axon_personnel_journal',
+  'axon_pto',
   'axon_daily_activity_products',
   'axon_daily_activity_products_removed',
   'axon_daily_activity_clients',
@@ -2860,7 +2884,7 @@ function openApp(appId) {
 
 function goBack() {
   // Reset daily activity sub-views so next open starts at the card landing
-  ['activityEntryView','activityWinsView','activityLossesView','activityCreditView','activityPersonnelView'].forEach(id => {
+  ['activityEntryView','activityWinsView','activityLossesView','activityCreditView','activityPersonnelView','activityPTOView'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -6427,7 +6451,7 @@ function editCustomActivityCategory() {
   loadActivityCategoryDropdown(newName);
 }
 
-const ACTIVITY_VIEWS = ['activityLanding','activityEntryView','activityWinsView','activityLossesView','activityCreditView','activityPersonnelView','activityProjectsView','activityProjectDetailView'];
+const ACTIVITY_VIEWS = ['activityLanding','activityEntryView','activityWinsView','activityLossesView','activityCreditView','activityPersonnelView','activityPTOView','activityProjectsView','activityProjectDetailView'];
 const ACTIVITY_VIEW_LABELS = {
   activityLanding:       'Daily Activity Tracking and Performance Measures',
   activityEntryView:     'Daily Activity Tracking and Performance Measures › Daily Activity',
@@ -6435,6 +6459,7 @@ const ACTIVITY_VIEW_LABELS = {
   activityLossesView:    'Daily Activity Tracking and Performance Measures › Losses',
   activityCreditView:    'Daily Activity Tracking and Performance Measures › Get Some Credit',
   activityPersonnelView: 'Daily Activity Tracking and Performance Measures › Personnel Issues',
+  activityPTOView:       'Daily Activity Tracking and Performance Measures › PTO',
   activityProjectsView:       'Daily Activity Tracking and Performance Measures › Projects',
   activityProjectDetailView:  'Daily Activity Tracking and Performance Measures › Projects',
 };
@@ -6451,6 +6476,7 @@ function showActivityView(id) {
   if (id === 'activityLossesView') { document.getElementById('lossDate').value = todayISO(); renderTrackerList('loss'); }
   if (id === 'activityCreditView') { document.getElementById('creditDate').value = todayISO(); loadCreditProductDropdown('N/A'); renderCreditList(); }
   if (id === 'activityPersonnelView') { renderPersonnelLanding(); }
+  if (id === 'activityPTOView') { renderPTO(); }
   if (id === 'activityProjectsView')     { renderProjectsLanding(); }
   if (id === 'activityProjectDetailView') { document.getElementById('projectDetailDate').value = todayISO(); renderProjectDetail(); }
   if (id === 'activityEntryView')  { renderActivities(); }
@@ -6555,6 +6581,74 @@ function deleteActivity(index) {
   renderActivities();
 }
 
+// ─── PTO ─────────────────────────────────────────────────────────────────
+var ptoRanges = JSON.parse(localStorage.getItem('axon_pto') || '[]');
+function savePTO() { localStorage.setItem('axon_pto', JSON.stringify(ptoRanges)); }
+
+function ptoDayCount(startDate, endDate) {
+  var a = new Date(startDate + 'T00:00:00'), b = new Date(endDate + 'T00:00:00');
+  return Math.round((b - a) / 86400000) + 1;
+}
+
+function dateInPTO(dateKey) {
+  return ptoRanges.find(function(p) { return dateKey >= p.startDate && dateKey <= p.endDate; }) || null;
+}
+
+function renderPTO() {
+  var count = ptoRanges.length;
+  var el = document.getElementById('ptoCount');
+  if (el) el.textContent = count;
+  var mel = document.getElementById('ptoModalCount');
+  if (mel) mel.textContent = count + ' period' + (count === 1 ? '' : 's');
+  var list = document.getElementById('ptoList');
+  if (!list) return;
+  if (count === 0) {
+    list.innerHTML = '<div style="padding:32px;text-align:center;color:#888;font-size:14px">No PTO periods logged yet. Use the form above to add one.</div>';
+    return;
+  }
+  var sorted = ptoRanges.map(function(p, i) { return { p: p, i: i }; }).sort(function(a, b) {
+    return b.p.startDate.localeCompare(a.p.startDate);
+  });
+  list.innerHTML = sorted.map(function(entry) {
+    var p = entry.p, i = entry.i;
+    var startLabel = fmtLocalDate(p.startDate);
+    var endLabel   = fmtLocalDate(p.endDate);
+    var days = ptoDayCount(p.startDate, p.endDate);
+    var range = p.startDate === p.endDate ? startLabel : startLabel + ' – ' + endLabel;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:0.5px solid #333">' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:700;color:#60a5fa">🏖 ' + range + '</div>' +
+        '<div style="font-size:12px;color:#888;margin-top:3px">' + days + ' day' + (days === 1 ? '' : 's') + (p.note ? ' &nbsp;·&nbsp; ' + p.note.replace(/&/g,'&amp;').replace(/</g,'&lt;') : '') + '</div>' +
+      '</div>' +
+      '<button onclick="deletePTO(' + i + ')" style="background:#2a2a2a;border:1px solid #ff7a6e;color:#ff7a6e;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600">✕ Remove</button>' +
+    '</div>';
+  }).join('');
+}
+
+function deletePTO(i) {
+  ptoRanges.splice(i, 1);
+  savePTO();
+  renderPTO();
+  renderActivities();
+}
+
+document.getElementById('ptoAddForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var start = document.getElementById('ptoStart').value;
+  var end   = document.getElementById('ptoEnd').value;
+  var note  = document.getElementById('ptoNote').value.trim();
+  if (!start || !end) { alert('Please enter both a start and end date.'); return; }
+  if (start > end) { alert('Start date must be before or equal to end date.'); return; }
+  ptoRanges.push({ startDate: start, endDate: end, note: note });
+  savePTO();
+  document.getElementById('ptoStart').value = '';
+  document.getElementById('ptoEnd').value   = '';
+  document.getElementById('ptoNote').value  = '';
+  renderPTO();
+  renderActivities();
+});
+// ─────────────────────────────────────────────────────────────────────────
+
 function renderActivities() {
   const tbody = document.getElementById('activityTable');
   if (!tbody) return;
@@ -6593,6 +6687,11 @@ function renderActivities() {
       lastDate = dateKey;
       const dateLabel = dateKey ? fmtLocalDate(dateKey) : '—';
       rows.push('<tr><td colspan="6" style="background:#1a1a1a;color:#FFE000;font-size:12px;font-weight:700;letter-spacing:0.06em;padding:6px 12px;border-top:1px solid #2a2a2a;border-bottom:1px solid #2a2a2a">' + dateLabel + '</td></tr>');
+      var pto = dateKey ? dateInPTO(dateKey) : null;
+      if (pto) {
+        var ptoBadge = '🏖 PTO' + (pto.note ? ' — ' + pto.note.replace(/&/g,'&amp;').replace(/</g,'&lt;') : '');
+        rows.push('<tr><td colspan="6" style="background:#0a1520;color:#60a5fa;font-size:12px;padding:4px 12px;font-style:italic;border-bottom:1px solid #1e3a5e">' + ptoBadge + '</td></tr>');
+      }
     }
     const cats = Array.isArray(a.categories) && a.categories.length ? a.categories : (a.category ? [a.category] : []);
     const catDisplay = cats.length ? cats.map(function(c){ return '<span style="display:inline-block;background:#1a1a1a;border:1px solid #444;border-radius:10px;padding:1px 7px;font-size:11px;color:#ccc;margin:1px">' + c.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>'; }).join(' ') : '-';
@@ -6746,6 +6845,9 @@ function updateTrackerCards() {
   // Personnel count lives outside TRACKERS — update it here too
   const pEl = document.getElementById('personnelCount');
   if (pEl && typeof personnelIssues !== 'undefined') pEl.textContent = personnelIssues.length;
+  // PTO count
+  const ptoEl = document.getElementById('ptoCount');
+  if (ptoEl) ptoEl.textContent = ptoRanges.length;
   // Projects count
   if (typeof updateProjectsCount === 'function') updateProjectsCount();
 }
