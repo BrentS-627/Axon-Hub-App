@@ -6755,12 +6755,14 @@ function openActivityReport() {
 
   function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+  function typeLabel(k) {
+    return k === 'RD__with_org' ? 'RD - Hours Worked on RD' : k === 'RD__no_org' ? 'RD' : k;
+  }
   function tableRows(obj) {
-    return Object.keys(obj).sort(function(a,b){ return obj[b].hours - obj[a].hours; }).map(function(k) {
+    return Object.keys(obj).sort(function(a,b){ return typeLabel(a).localeCompare(typeLabel(b)); }).map(function(k) {
       var v = obj[k];
       var h = v.hours === 0 ? '—' : (v.hours % 1 === 0 ? v.hours : v.hours.toFixed(1)) + ' hrs';
-      var label = k === 'RD__with_org' ? 'RD - Hours Worked on RD' : k === 'RD__no_org' ? 'RD' : k;
-      return '<tr><td>' + esc(label) + '</td><td style="text-align:right">' + h + '</td></tr>';
+      return '<tr><td>' + esc(typeLabel(k)) + '</td><td style="text-align:right">' + h + '</td></tr>';
     }).join('');
   }
 
