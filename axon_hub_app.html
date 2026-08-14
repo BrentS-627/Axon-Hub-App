@@ -1871,6 +1871,7 @@ Back to Hub
     <div style="display:flex;gap:8px">
       <button class="btn-new" onclick="openActivityModal()">＋ New Entry</button>
       <button class="btn-new" onclick="openPTOModal()">🏖 Log PTO</button>
+      <button class="btn-new" onclick="openActivityReport()">📊 Report</button>
       <button class="btn-new" onclick="openActivityExportModal()">⬇ Export CSV</button>
       <button class="btn-new" onclick="openActivityExportModalXLS()" style="background:#1e3a1e;border-color:#4ade80;color:#4ade80">⬇ Export Excel</button>
     </div>
@@ -6690,6 +6691,125 @@ document.getElementById('ptoRangeForm').addEventListener('submit', function(e) {
   closePTOModal();
   renderActivities();
 });
+// ─────────────────────────────────────────────────────────────────────────
+
+// ─── Activity Report ─────────────────────────────────────────────────────
+function parseHours(timeSpent) {
+  if (!timeSpent) return 0;
+  var s = timeSpent.toLowerCase();
+  var m = s.match(/(\d+(?:\.\d+)?)\s*day/);
+  if (m) return parseFloat(m[1]) * 10;
+  m = s.match(/(\d+(?:\.\d+)?)\s*h/);
+  if (m) return parseFloat(m[1]);
+  return 0;
+}
+
+function openActivityReport() {
+  var start = document.getElementById('actEntry-start').value;
+  var end   = document.getElementById('actEntry-end').value;
+  if (!start && !end) {
+    alert('Please select a date range first using the Date range fields, then click Report.');
+    return;
+  }
+  var filtered = activities.filter(function(a) {
+    var d = a.date || '';
+    if (start && d < start) return false;
+    if (end   && d > end)   return false;
+    return true;
+  }).sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+
+  var totalHours = 0;
+  var byType = {}, byOrg = {}, catCount = {};
+  filtered.forEach(function(a) {
+    var h = parseHours(a.timeSpent);
+    totalHours += h;
+    var t = a.timeType || 'Unspecified';
+    byType[t] = byType[t] || { count: 0, hours: 0 };
+    byType[t].count++; byType[t].hours += h;
+    var o = a.client || '—';
+    byOrg[o] = byOrg[o] || { count: 0, hours: 0 };
+    byOrg[o].count++; byOrg[o].hours += h;
+    var cats = Array.isArray(a.categories) ? a.categories : (a.category ? [a.category] : []);
+    cats.forEach(function(c) { if (c) { catCount[c] = (catCount[c] || 0) + 1; } });
+  });
+
+  var rangeLabel = (start ? fmtLocalDate(start) : '—') + ' to ' + (end ? fmtLocalDate(end) : '—');
+  var generatedAt = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
+
+  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function tableRows(obj) {
+    return Object.keys(obj).sort(function(a,b){ return obj[b].hours - obj[a].hours; }).map(function(k) {
+      var v = obj[k];
+      var h = v.hours === 0 ? '—' : (v.hours % 1 === 0 ? v.hours : v.hours.toFixed(1)) + ' hrs';
+      return '<tr><td>' + esc(k) + '</td><td style="text-align:center">' + v.count + '</td><td style="text-align:right">' + h + '</td></tr>';
+    }).join('');
+  }
+
+  var catRows = Object.keys(catCount).sort(function(a,b){ return catCount[b]-catCount[a]; }).slice(0,20).map(function(c) {
+    return '<li>' + esc(c) + ' <span style="color:#888;font-size:12px">(' + catCount[c] + '×)</span></li>';
+  }).join('');
+
+  var lastDate = null, dailyRows = '';
+  filtered.forEach(function(a) {
+    var dk = a.date || '';
+    if (dk !== lastDate) {
+      lastDate = dk;
+      dailyRows += '<tr style="background:#f5f5f5"><td colspan="4" style="font-weight:700;font-size:13px;padding:8px 10px;color:#333">' + (dk ? fmtLocalDate(dk) : '—') + '</td></tr>';
+    }
+    var cats = Array.isArray(a.categories) ? a.categories : (a.category ? [a.category] : []);
+    var catStr = cats.length ? cats.map(function(c){ return '<span style="background:#e8e8e8;border-radius:10px;padding:1px 7px;font-size:11px;margin:1px;display:inline-block">' + esc(c) + '</span>'; }).join(' ') : '—';
+    dailyRows += '<tr><td style="padding:6px 10px;color:#555;font-size:12px">' + esc(a.timeType||'—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:12px">' + esc(a.client||'—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:12px;white-space:nowrap">' + esc(a.timeSpent||'—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:12px">' + catStr + '</td></tr>';
+  });
+
+  var totalHrsDisplay = totalHours === 0 ? '0' : (totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1));
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Activity Report — ' + rangeLabel + '</title>' +
+  '<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#222;margin:0;padding:24px 32px;background:#fff}' +
+  'h1{margin:0 0 4px;font-size:24px;color:#111}' +
+  '.sub{color:#666;font-size:13px;margin-bottom:24px}' +
+  '.stats{display:flex;gap:14px;margin-bottom:28px}' +
+  '.stat{background:#f7f7f7;border:1px solid #e8e8e8;border-radius:8px;padding:14px 18px;flex:1;text-align:center}' +
+  '.stat .num{font-size:26px;font-weight:700;color:#1a1a1a}' +
+  '.stat .lbl{font-size:11px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}' +
+  'h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:28px 0 8px;border-bottom:1px solid #e8e8e8;padding-bottom:5px}' +
+  'table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px}' +
+  'th{text-align:left;background:#f5f5f5;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#888;border-bottom:1px solid #e0e0e0}' +
+  'td{padding:5px 10px;border-bottom:1px solid #f0f0f0}' +
+  'ul{margin:0;padding-left:20px;font-size:13px;line-height:2}' +
+  '.footer{margin-top:36px;font-size:11px;color:#bbb;border-top:1px solid #eee;padding-top:10px}' +
+  '.no-print{margin-bottom:20px}' +
+  '@media print{.no-print{display:none}body{padding:12px}}' +
+  '</style></head><body>' +
+  '<div class="no-print">' +
+  '<button onclick="window.print()" style="background:#1a1a1a;color:#FFE000;border:none;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;margin-right:8px">🖨 Print / Save as PDF</button>' +
+  '<button onclick="window.close()" style="background:#eee;border:none;border-radius:7px;padding:9px 16px;font-size:13px;cursor:pointer;color:#555">✕ Close</button>' +
+  '</div>' +
+  '<h1>Activity Report</h1>' +
+  '<div class="sub">' + esc(rangeLabel) + ' &nbsp;·&nbsp; Generated ' + generatedAt + '</div>' +
+  '<div class="stats">' +
+    '<div class="stat"><div class="num">' + filtered.length + '</div><div class="lbl">Entries</div></div>' +
+    '<div class="stat"><div class="num">' + totalHrsDisplay + '</div><div class="lbl">Total Hours</div></div>' +
+    '<div class="stat"><div class="num">' + Object.keys(byType).length + '</div><div class="lbl">Time Types</div></div>' +
+    '<div class="stat"><div class="num">' + Object.keys(byOrg).length + '</div><div class="lbl">Organizations</div></div>' +
+  '</div>' +
+  '<h2>By Time Type</h2>' +
+  '<table><thead><tr><th>Type</th><th style="text-align:center">Entries</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byType) + '</tbody></table>' +
+  '<h2>By Organization</h2>' +
+  '<table><thead><tr><th>Organization</th><th style="text-align:center">Entries</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byOrg) + '</tbody></table>' +
+  (catRows ? '<h2>Categories Used</h2><ul>' + catRows + '</ul>' : '') +
+  '<h2>Daily Log</h2>' +
+  '<table><thead><tr><th style="width:15%">Time Type</th><th style="width:25%">Organization</th><th style="width:15%">Time Spent</th><th>Categories</th></tr></thead><tbody>' + dailyRows + '</tbody></table>' +
+  '<div class="footer">Axon App Hub &nbsp;·&nbsp; Activity Report &nbsp;·&nbsp; ' + generatedAt + '</div>' +
+  '</body></html>';
+
+  var win = window.open('', '_blank', 'width=960,height=750');
+  win.document.write(html);
+  win.document.close();
+}
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─── CSV export with date range ─────────────────────────────────────────
