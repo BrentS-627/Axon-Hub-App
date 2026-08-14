@@ -6790,12 +6790,6 @@ function openActivityReport() {
   '</div>' +
   '<h1>Activity Report</h1>' +
   '<div class="sub">' + esc(rangeLabel) + ' &nbsp;·&nbsp; Generated ' + generatedAt + '</div>' +
-  '<div class="stats">' +
-    '<div class="stat"><div class="num">' + filtered.length + '</div><div class="lbl">Entries</div></div>' +
-    '<div class="stat"><div class="num">' + totalHrsDisplay + '</div><div class="lbl">Total Hours</div></div>' +
-    '<div class="stat"><div class="num">' + Object.keys(byType).length + '</div><div class="lbl">Time Types</div></div>' +
-    '<div class="stat"><div class="num">' + Object.keys(byOrg).length + '</div><div class="lbl">Organizations</div></div>' +
-  '</div>' +
   '<h2>By Time Type</h2>' +
   '<table><thead><tr><th>Type</th><th style="text-align:center">Entries</th><th style="text-align:right">Hours</th></tr></thead><tbody>' + tableRows(byType) + '</tbody></table>' +
   '<h2>By Organization</h2>' +
