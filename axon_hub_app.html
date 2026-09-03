@@ -428,7 +428,7 @@ tr:hover .dock-today-btn{opacity:1;pointer-events:auto}
     <button onclick="exportHubBackup()" style="background:transparent;border:1px solid #FFE000;color:#FFE000;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">⬇ Export</button>
   </div>
 </div>
-<div id="fsSyncRow" style="display:none"></div>
+<div id="fsSyncRow" style="display:flex;align-items:center;gap:10px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;padding:6px 1.5rem;flex-wrap:wrap"></div>
 <div class="hub-body">
 <div class="cards">
 <div class="app-card" onclick="openApp('support-tracker')">
@@ -1464,7 +1464,6 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <option value="Emailed Support">Emailed Support</option>
 <option value="JIRA">JIRA</option>
 <option value="Phoned Support">Phoned Support</option>
-<option value="SAPD - Internal TAM Support">SAPD - Internal TAM Support</option>
 <option value="Salesforce">Salesforce</option>
 <option value="Service Hub">Service Hub</option>
 <option value="ServiceNow">ServiceNow</option>
@@ -1473,7 +1472,7 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 </div>
 </div>
 
-<div class="form-field form-full" id="sapdLevelField" style="display:none">
+<div class="form-field form-full" id="sapdLevelField">
 <label for="sapdLevel">SAPD Resolution Level</label>
 <select id="sapdLevel">
 <option value="">Select level</option>
@@ -1485,6 +1484,13 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 </div>
 
 <div class="form-field form-full">
+<label>Do you need an SAPD ticket number?</label>
+<div style="margin-top:4px">
+  <button type="button" id="sapdNumYes" onclick="assignSapdNumber()" style="padding:8px 24px;border-radius:8px;border:1px solid #444;background:#1a1a1a;color:#aaa;font-weight:700;cursor:pointer">Yes — Generate Number</button>
+</div>
+</div>
+
+<div class="form-field form-full">
 <label for="subject">Subject</label>
 <input type="text" id="subject" placeholder="Brief description of the issue" required>
 </div>
@@ -1492,7 +1498,7 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <div class="form-grid">
 <div class="form-field">
 <label for="caseNum">Case Number</label>
-<input type="text" id="caseNum" placeholder="e.g., 2024-001 (leave blank for SAPD - Internal TAM Support)">
+<input type="text" id="caseNum" placeholder="">
 </div>
 <div class="form-field">
 <label for="ticketStatus">Status</label>
@@ -1615,6 +1621,15 @@ Module scaffold ready. Tell Claude what fields you want tracked (e.g., P.O. numb
 <div class="form-field form-full">
 <label for="rmaNotes">Notes</label>
 <textarea id="rmaNotes" placeholder="Additional details, updates, or comments"></textarea>
+</div>
+
+<div class="form-field form-full">
+<label style="display:flex;align-items:center;gap:8px">📓 Journal <span style="font-size:11px;color:#888;font-weight:400">— timestamped entries, newest first</span></label>
+<div id="rmaJournalLog" style="max-height:160px;overflow-y:auto;border:1px solid #333;border-radius:6px;padding:8px;margin-bottom:8px;background:#111;font-size:12px;color:#ccc;display:none"></div>
+<div style="display:flex;gap:8px">
+<textarea id="rmaJournalEntry" placeholder="Add a journal note…" rows="2" style="flex:1;resize:vertical"></textarea>
+<button type="button" onclick="addRMAJournalEntry()" style="background:#FFE000;color:#111;border:none;border-radius:8px;padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;align-self:stretch">Add Note</button>
+</div>
 </div>
 
 <div class="modal-actions">
@@ -2723,8 +2738,9 @@ function _fsGetAllData() {
 async function _fsWrite() {
   if (!_fsHandle || !_fsSyncEnabled) return;
   try {
+    const fileHandle = await _fsHandle.getFileHandle('AxonAppHub_data.json', { create: true });
     const payload = { version: 1, savedAt: new Date().toISOString(), data: _fsGetAllData() };
-    const w = await _fsHandle.createWritable();
+    const w = await fileHandle.createWritable();
     await w.write(JSON.stringify(payload, null, 2));
     await w.close();
     _fsUI('synced');
@@ -2744,6 +2760,7 @@ function _fsScheduleSave() {
 function _fsUI(state) {
   const el = document.getElementById('fsSyncRow');
   if (!el) return;
+  el.style.display = 'flex';
   const S = {
     off:     { dot:'#555',    text:'No data file connected',              btn:'📂 Connect Data File', bc:'#555' },
     synced:  { dot:'#4ade80', text:'Auto-saving to file on your computer', btn:'✅ File Connected',    bc:'#4ade80' },
@@ -2781,9 +2798,10 @@ async function _idbClear() {
   return new Promise((res, rej) => { const tx = db.transaction('h','readwrite'); tx.objectStore('h').delete('fh'); tx.oncomplete = res; tx.onerror = e => rej(e.target.error); });
 }
 
-async function _fsLoadFromHandle(handle) {
+async function _fsLoadFromHandle(dirHandle) {
   try {
-    const file = await handle.getFile();
+    const fileHandle = await dirHandle.getFileHandle('AxonAppHub_data.json', { create: false });
+    const file = await fileHandle.getFile();
     const text = await file.text();
     if (!text.trim()) return false;
     const parsed = JSON.parse(text);
@@ -2794,7 +2812,7 @@ async function _fsLoadFromHandle(handle) {
 }
 
 async function fsConnect() {
-  if (!window.showSaveFilePicker) {
+  if (!('showDirectoryPicker' in window)) {
     alert('File sync requires Google Chrome or Microsoft Edge.\n\nUse Export Backup to manually save your data.');
     return;
   }
@@ -2823,32 +2841,22 @@ async function fsConnect() {
     } catch(e) { console.warn('[AxonFS]', e); }
     return;
   }
-  // Fresh connect — open save/create dialog
+  // Fresh connect — pick a folder (works with Google Drive)
   try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'AxonAppHub_data.json',
-      types: [{ description: 'JSON Data File', accept: { 'application/json': ['.json'] } }],
-    });
-    // Check if selected file already has data
-    let existingData = null;
-    try {
-      const f = await handle.getFile();
-      const t = await f.text();
-      if (t.trim()) { const p = JSON.parse(t); if (p.data && Object.keys(p.data).length) existingData = p; }
-    } catch(e) {}
-
-    _fsHandle = handle;
-    await _idbSave(handle);
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    _fsHandle = dirHandle;
+    await _idbSave(dirHandle);
     _fsSyncEnabled = true;
 
-    if (existingData) {
-      const load = confirm(
-        'This file already has data (' + Object.keys(existingData.data).length + ' record sets, saved ' + (existingData.savedAt ? existingData.savedAt.slice(0,10) : 'unknown') + ').\n\n' +
+    // Check if AxonAppHub_data.json already exists in the folder
+    const loaded = await _fsLoadFromHandle(dirHandle);
+    if (loaded) {
+      const useFile = confirm(
+        'Found existing AxonAppHub_data.json in this folder.\n\n' +
         'OK = Load data FROM file into the app (replaces current data)\n' +
-        'Cancel = Save current app data TO the file instead'
+        'Cancel = Overwrite file with current app data'
       );
-      if (load) {
-        Object.keys(existingData.data).forEach(k => _origLSSet(k, JSON.stringify(existingData.data[k])));
+      if (useFile) {
         _fsUI('synced');
         alert('Data loaded from file. Page will reload.');
         location.reload();
@@ -2857,14 +2865,14 @@ async function fsConnect() {
     }
     await _fsWrite();
     _fsUI('synced');
-    alert('✅ Data file connected!\n\nFile: ' + handle.name + '\n\nAll changes will now auto-save to this file. Clearing browser history will not affect it.');
+    alert('✅ Data file connected!\n\nSaving to: AxonAppHub_data.json in your selected folder.\n\nAll changes auto-save automatically. Google Drive will sync it to the cloud.');
   } catch(e) {
-    if (e.name !== 'AbortError') { console.error('[AxonFS]', e); alert('Could not connect file: ' + e.message); }
+    if (e.name !== 'AbortError') { console.error('[AxonFS]', e); alert('Could not connect folder: ' + e.message); }
   }
 }
 
 async function _fsInit() {
-  if (!window.showSaveFilePicker) { _fsUI('ns'); return; }
+  if (!('showDirectoryPicker' in window)) { _fsUI('ns'); return; }
   _fsUI('off');
   try {
     const handle = await _idbGet();
@@ -2958,16 +2966,24 @@ function toggleJiraField() {
 // Show the SAPD Resolution Level field only when How Initiated is "SAPD - Internal TAM Support".
 // Also auto-populate the Case Number with the next sequential SAPD#### value if it's blank.
 function toggleSapdLevelField() {
-  const howInit = document.getElementById('howInitiated').value;
-  const field = document.getElementById('sapdLevelField');
-  if (!field) return;
-  field.style.display = (howInit === 'SAPD - Internal TAM Support') ? 'block' : 'none';
-  if (howInit === 'SAPD - Internal TAM Support') {
-    const caseField = document.getElementById('caseNum');
-    if (caseField && !caseField.value.trim()) {
-      caseField.value = getNextSapdNumber();
-    }
+  // Reset the Yes/No buttons to neutral when modal opens or How Initiated changes
+  _setSapdNumBtn(null);
+}
+
+function _setSapdNumBtn(selected) {
+  const yes = document.getElementById('sapdNumYes');
+  if (!yes) return;
+  yes.style.background  = selected === 'yes' ? '#FFE000' : '#1a1a1a';
+  yes.style.color        = selected === 'yes' ? '#111'    : '#aaa';
+  yes.style.borderColor  = selected === 'yes' ? '#FFE000' : '#444';
+}
+
+function assignSapdNumber() {
+  const caseField = document.getElementById('caseNum');
+  if (caseField && !caseField.value.trim()) {
+    caseField.value = getNextSapdNumber();
   }
+  _setSapdNumBtn('yes');
 }
 
 // Scan existing tickets for the highest SAPD#### case number and return the next one
@@ -3214,17 +3230,60 @@ function openRMAModal(index) {
     document.getElementById('rmaStatus').value = r.status;
     document.getElementById('rmaDriveLink').value = r.driveLink || '';
     document.getElementById('rmaNotes').value = r.notes;
+    renderRMAJournal(r.journal || []);
   } else {
     title.textContent = 'New RMA';
     form.reset();
     document.getElementById('rmaDate').valueAsDate = new Date();
+    renderRMAJournal([]);
   }
+  document.getElementById('rmaJournalEntry').value = '';
   modal.style.display = 'flex';
 }
 
 function closeRMAModal() {
   document.getElementById('rmaModal').style.display = 'none';
+  const log = document.getElementById('rmaJournalLog');
+  if (log) log._pending = [];
   editingRMAIndex = -1;
+}
+
+function renderRMAJournal(entries) {
+  const log = document.getElementById('rmaJournalLog');
+  if (!log) return;
+  if (!entries || entries.length === 0) {
+    log.style.display = 'none';
+    return;
+  }
+  log.style.display = 'block';
+  log.innerHTML = [...entries].reverse().map(function(e) {
+    const dt = new Date(e.ts);
+    const label = dt.toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' })
+      + ' ' + dt.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    return '<div style="border-bottom:1px solid #2a2a2a;padding:6px 0;line-height:1.4">'
+      + '<span style="color:#FFE000;font-size:11px;font-weight:700">' + label + '</span>'
+      + '<div style="margin-top:3px;color:#ddd">' + e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function addRMAJournalEntry() {
+  const text = (document.getElementById('rmaJournalEntry').value || '').trim();
+  if (!text) return;
+  const entry = { ts: new Date().toISOString(), text };
+  if (editingRMAIndex >= 0) {
+    if (!rmas[editingRMAIndex].journal) rmas[editingRMAIndex].journal = [];
+    rmas[editingRMAIndex].journal.push(entry);
+    saveData();
+    renderRMAJournal(rmas[editingRMAIndex].journal);
+  } else {
+    // New RMA not yet saved — store temporarily in the modal
+    const log = document.getElementById('rmaJournalLog');
+    log._pending = log._pending || [];
+    log._pending.push(entry);
+    renderRMAJournal(log._pending);
+  }
+  document.getElementById('rmaJournalEntry').value = '';
 }
 
 function deleteRMA(index) {
@@ -3337,7 +3396,8 @@ document.getElementById('rmaForm').addEventListener('submit', function(e) {
     ab4Items: document.getElementById('ab4Items').value,
     status: document.getElementById('rmaStatus').value,
     driveLink: document.getElementById('rmaDriveLink').value,
-    notes: document.getElementById('rmaNotes').value
+    notes: document.getElementById('rmaNotes').value,
+    journal: editingRMAIndex >= 0 ? (rmas[editingRMAIndex].journal || []) : (document.getElementById('rmaJournalLog')._pending || [])
   };
   if (editingRMAIndex >= 0) rmas[editingRMAIndex] = data;
   else rmas.push(data);
@@ -5324,22 +5384,14 @@ function addNewLocationPrompt() {
   return name;
 }
 function recalcTotals() {
-  const AB4_SOURCES = [
-    "AB4 - SPARES (IN CLOSET)",
-    "AB4 CAMERA - DAMAGED (BLUE BASKET)",
-    "AB4 CAMERA - READY TO ISSUE",
-    "AB4 CAMERA - READY ROOM",
-    "AB4 CAMERA (RMA RETURN: IN TRANSIT)"
-  ];
-  let totalItem = null;
-  let sum = 0;
   for (const cat of data.categories) {
-    for (const item of cat.items) {
-      if (item.name === "AB4 CAMERA (TOTAL)") totalItem = item;
-      if (AB4_SOURCES.includes(item.name)) sum += item.qty;
-    }
+    const totalItem = cat.items.find(i => i.name === "AB4 CAMERA (TOTAL)");
+    if (!totalItem) continue;
+    const sum = cat.items
+      .filter(i => i.name !== "AB4 CAMERA (TOTAL)" && i.name.toUpperCase().startsWith("AB4") && i.name.toUpperCase() !== "AB4 POV - FLEX MODULE")
+      .reduce((acc, i) => acc + (parseInt(i.qty, 10) || 0), 0);
+    totalItem.qty = sum;
   }
-  if (totalItem) totalItem.qty = sum;
 }
 
 function save() {
@@ -5412,7 +5464,7 @@ function render() {
              item.sku.toLowerCase().includes(search) ||
              item.location.toLowerCase().includes(search) ||
              item.whoUses.toLowerCase().includes(search);
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     if (search && rows.length === 0) return;
 
@@ -5441,14 +5493,13 @@ function render() {
         <thead>
           <tr>
             <th style="width:22%">Product</th>
-            <th style="width:12%">Quantity</th>
-            <th style="width:11%">Date of Inventory</th>
+            <th style="width:10%">Quantity</th>
+            <th style="width:10%">Date of Inventory</th>
             <th style="width:13%">Location</th>
-            <th style="width:12%">Serial Numbers</th>
             <th style="width:10%">Who Uses</th>
-            <th style="width:8%">SKU #</th>
-            <th style="width:12%">Website</th>
-            <th style="width:48px"></th>
+            <th style="width:7%">SKU #</th>
+            <th style="width:10%">Website</th>
+            <th style="width:130px">Actions</th>
           </tr>
         </thead>
         <tbody>`;
@@ -5488,7 +5539,6 @@ function render() {
             <td class="location-cell">
               ${isTotal ? '' : `<select class="loc-select" onchange="changeLocation('${item.id}',${ci},this.value)">${buildLocationOptions(item.location)}</select>`}
             </td>
-            <td class="serial-cell" title="${escHtml(item.serial)}">${escHtml(item.serial) || '<span class="dash">—</span>'}</td>
             <td class="who-cell">
               <div class="who-wrap" id="who-${item.id}">
                 <div class="who-display" onclick="openWhoDropdown('${item.id}',event)">${escHtml(item.whoUses) || '<span class="dash">—</span>'}</div>
@@ -5496,9 +5546,13 @@ function render() {
             </td>
             <td>${skuHtml}</td>
             <td>${urlHtml}</td>
-            <td><button class="del-btn-icon" onclick="deleteItem('${item.id}',${ci})" title="Delete this item" aria-label="Delete"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button></td>
+            <td style="white-space:nowrap">
+              ${isTotal ? '' : `<button class="action-btn action-edit" onclick="startRenameItem('${item.id}')" title="Rename this item">✏️ Edit</button>`}
+              ${isTotal ? '<button class="action-btn action-delete" style="opacity:0;pointer-events:none">✕</button>' : `<button class="action-btn action-delete" onclick="deleteItem('${item.id}',${ci})" title="Delete this item">✕</button>`}
+            </td>
           </tr>
-          ${item.name === 'AB4 CAMERA (RMA RETURN: IN TRANSIT)' ? `<tr><td colspan="9" style="padding:0;border-bottom:2px solid #444"></td></tr>` : ''}`;
+          ${item.name === 'AB4 CAMERA (RMA RETURN: IN TRANSIT)' ? `<tr><td colspan="9" style="padding:0;border-bottom:2px solid #444"></td></tr>` : ''}
+          ${isTotal ? `<tr><td colspan="9" style="padding:0;border-bottom:2px solid #444"></td></tr>` : ''}`;
     });
 
     html += `
@@ -5673,6 +5727,18 @@ function handleAddModalLocationChange(sel) {
   const name = addNewLocationPrompt();
   // Rebuild the dropdown so the new location shows up; select it if added, else reset.
   sel.innerHTML = buildLocationOptions(name || '');
+}
+
+function startRenameItem(itemId) {
+  const found = findItem(itemId);
+  if (!found) return;
+  const oldName = found.item.name;
+  const newName = (prompt('Rename product:', oldName) || '').trim();
+  if (!newName || newName === oldName) return;
+  found.item.name = newName;
+  save();
+  render();
+  showToast('Renamed to: ' + newName);
 }
 
 function deleteItem(itemId, catIdx) {
@@ -6921,6 +6987,8 @@ function exportActivitiesXLS() {
     rows.map(a => [a.date||'',a.timeType||'',a.timeSpent||'',a.product||'',a.category||'',a.client||'',a.description||'']));
   closeActivityExportModal();
 }
+document.getElementById('winsAddForm').addEventListener('submit', function(e) { addTrackerEntry('win', e); });
+document.getElementById('lossesAddForm').addEventListener('submit', function(e) { addTrackerEntry('loss', e); });
 document.getElementById('activityExportForm').addEventListener('submit', function(e) {
   e.preventDefault();
   const form = document.getElementById('activityExportForm');
