@@ -1,20 +1,21 @@
+$file = "C:\Users\brentsmith\Downloads\axon_hub_app.html"
+$port = 3000
+$url = "http://localhost:$port/"
+
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:3000/")
+$listener.Prefixes.Add($url)
 $listener.Start()
-Write-Host "Serving at http://localhost:3000/"
+
+Write-Host "Axon Hub running at $url"
+Write-Host "Press Ctrl+C to stop."
+
+Start-Process $url
+
 while ($listener.IsListening) {
-    $ctx = $listener.GetContext()
-    $req = $ctx.Request
-    $res = $ctx.Response
-    $path = $req.Url.LocalPath.TrimStart('/')
-    if ($path -eq "" -or $path -eq "axon_hub_app.html") {
-        $file = "C:\Users\brentsmith\Documents\GitHub\axon_hub_app.html"
-        $content = [System.IO.File]::ReadAllBytes($file)
-        $res.ContentType = "text/html; charset=utf-8"
-        $res.ContentLength64 = $content.Length
-        $res.OutputStream.Write($content, 0, $content.Length)
-    } else {
-        $res.StatusCode = 404
-    }
-    $res.OutputStream.Close()
+    $context = $listener.GetContext()
+    $content = [System.IO.File]::ReadAllBytes($file)
+    $context.Response.ContentType = "text/html"
+    $context.Response.ContentLength64 = $content.Length
+    $context.Response.OutputStream.Write($content, 0, $content.Length)
+    $context.Response.OutputStream.Close()
 }
